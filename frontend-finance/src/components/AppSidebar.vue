@@ -53,7 +53,7 @@ function isActive(to: string) {
   <Sidebar>
     <SidebarHeader class="p-4">
       <RouterLink to="/home" class="flex items-center gap-2.5">
-        <img src="@/assets/Box.webp" alt="" class="size-8 shrink-0 object-contain" />
+        <img src="@/assets/wallet.webp" alt="" class="size-8 shrink-0 object-contain" />
         <div class="flex min-w-0 flex-col">
           <span class="truncate text-sm font-semibold">Meu Bolso</span>
           <span class="truncate text-xs text-muted-foreground">Finanças pessoais</span>
@@ -69,10 +69,7 @@ function isActive(to: string) {
             <SidebarMenuItem v-for="item in navItems" :key="item.to">
               <SidebarMenuButton as-child :is-active="isActive(item.to)" class="h-9 px-2">
                 <RouterLink :to="item.to">
-                  <component
-                    :is="item.icon"
-                    :class="isActive(item.to) ? '' : 'text-muted-foreground'"
-                  />
+                  <component :is="item.icon" :class="isActive(item.to) ? '' : 'text-muted-foreground'" />
                   <span>{{ item.title }}</span>
                 </RouterLink>
               </SidebarMenuButton>
@@ -85,12 +82,7 @@ function isActive(to: string) {
     <SidebarFooter class="border-t">
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton
-            as-child
-            size="lg"
-            class="gap-2.5"
-            :is-active="isActive('/user')"
-          >
+          <SidebarMenuButton as-child size="lg" class="gap-2.5" :is-active="isActive('/user')">
             <RouterLink to="/user">
               <Avatar class="size-8">
                 <AvatarFallback class="text-[11px] font-medium">

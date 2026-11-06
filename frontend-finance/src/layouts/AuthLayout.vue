@@ -1,11 +1,9 @@
 <template>
   <main class="flex min-h-screen">
-    <section
-      class="hidden w-1/2 flex-col justify-between bg-gray-400/5 px-12 py-10 md:flex"
-      aria-label="Apresentação do aplicativo"
-    >
+    <section class="hidden w-1/2 flex-col justify-between bg-gray-400/5 px-12 py-10 md:flex"
+      aria-label="Apresentação do aplicativo">
       <div class="flex items-center gap-1.5">
-        <img src="@/assets/Box.webp" alt="" class="size-7 object-contain" />
+        <img src="@/assets/wallet.webp" alt="" class="size-7 object-contain" />
         <h1 class="text-xl font-bold text-white">Meu Bolso</h1>
       </div>
 
