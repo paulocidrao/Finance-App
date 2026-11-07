@@ -2,6 +2,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { isAxiosError } from 'axios'
 import { toast } from 'vue-sonner'
+import { useNetworkStatus } from '@/utils/network-status'
 import {
   categoriesQueryKey,
   CATEGORIES_QUERY_KEY,
@@ -47,7 +48,14 @@ async function focusElement(id: string): Promise<void> {
 }
 
 export function useCategoriesController() {
+  const { isOnline } = useNetworkStatus()
   const queryClient = useQueryClient()
+
+  function canMutate(): boolean {
+    if (isOnline.value) return true
+    toast.error('Você está offline. Conecte-se para salvar alterações.')
+    return false
+  }
 
   // ── Filtros e paginação ─────────────────────────────────────────────────
   // O tipo é filtrado no servidor (GET /categories?type=). A API atual não
@@ -191,11 +199,13 @@ export function useCategoriesController() {
   }
 
   function openCreateCategory(): void {
+    if (!canMutate()) return
     resetForm(null)
     isFormOpen.value = true
   }
 
   function openEditCategory(category: Category): void {
+    if (!canMutate()) return
     resetForm(category)
     isFormOpen.value = true
   }
@@ -215,6 +225,7 @@ export function useCategoriesController() {
   }
 
   async function submitCategory(): Promise<void> {
+    if (!canMutate()) return
     if (isSubmitting.value) return
 
     isNameTouched.value = true
@@ -236,7 +247,9 @@ export function useCategoriesController() {
     isSubmitting.value = true
     try {
       const type = editing?.type ?? form.type
-      if (await isDuplicatedName(name, type, editing?.id)) {
+      const isDuplicated = await isDuplicatedName(name, type, editing?.id)
+      if (!canMutate()) return
+      if (isDuplicated) {
         errors.name = duplicatedNameMessage(type)
         await focusElement(CATEGORY_NAME_ID)
         return
@@ -287,6 +300,7 @@ export function useCategoriesController() {
   })
 
   function requestDeleteCategory(category: Category): void {
+    if (!canMutate()) return
     categoryPendingDelete.value = category
     isDeleteBlocked.value = false
     deleteError.value = ''
@@ -295,6 +309,7 @@ export function useCategoriesController() {
   }
 
   async function confirmDeleteCategory(): Promise<void> {
+    if (!canMutate()) return
     const category = categoryPendingDelete.value
     if (!category || isDeleting.value || isDeleteBlocked.value) return
 
@@ -334,6 +349,7 @@ export function useCategoriesController() {
   }
 
   return {
+    isOnline,
     // lista
     search,
     typeFilter,

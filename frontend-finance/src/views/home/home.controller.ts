@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { ref, computed } from 'vue'
 import { toast } from 'vue-sonner'
+import { useNetworkStatus } from '@/utils/network-status'
 import { getSummary, type HomeSummary } from './home.service'
 import {
   getCategoryExpenses,
@@ -72,6 +73,7 @@ function formatPercentage(value: number) {
 }
 
 export function useHomeController() {
+  const { isOnline } = useNetworkStatus()
   const queryClient = useQueryClient()
   const isNewTransactionOpen = ref(false)
   const selectedMonth = ref(getMonthKey(new Date()))
@@ -115,10 +117,18 @@ export function useHomeController() {
   })
 
   function openNewTransaction(): void {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.')
+      return
+    }
     isNewTransactionOpen.value = true
   }
 
   async function addTransaction(payload: NewTransactionInput): Promise<void> {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.')
+      return
+    }
     try {
       await createTransaction(payload)
       await queryClient.invalidateQueries({ queryKey: HOME_SUMMARY_QUERY_KEY })
@@ -136,6 +146,7 @@ export function useHomeController() {
   }
 
   return {
+    isOnline,
     summary,
     selectedMonth,
     selectedMonthLabel,

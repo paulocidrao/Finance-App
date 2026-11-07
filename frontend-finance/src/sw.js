@@ -1,7 +1,19 @@
+import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
+
+// All production chunks (including lazy-loaded routes) are cached at install.
+precacheAndRoute(self.__WB_MANIFEST);
+cleanupOutdatedCaches();
+const navigateFallback = '/index.html';
+registerRoute(new NavigationRoute(createHandlerBoundToURL(navigateFallback), {
+  denylist: [/^\/auth\//, /^\/api\//],
+}));
+
 const API_CACHE_NAME = "api-cache";
 const API_METADATA_CACHE_NAME = "api-cache-metadata";
-const STATIC_CACHE_NAME = "static-cache-v1";
-const API_CACHE_TTL_MS = 5 * 60 * 1000;
+const STATIC_CACHE_NAME = "static-cache-v2";
+// Retain an explicitly labelled offline snapshot for at most 24 hours.
+const API_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const API_NETWORK_TIMEOUT_MS = 3000;
 const API_CACHE_MAX_ENTRIES = 100;
 const STATIC_CACHE_MAX_ENTRIES = 100;
@@ -43,8 +55,6 @@ self.addEventListener("activate", (event) => {
           .map((name) => caches.delete(name)),
       );
 
-      const staticCache = await caches.open(STATIC_CACHE_NAME);
-      await staticCache.add(self.registration.scope).catch(() => undefined);
       await self.clients.claim();
     })(),
   );
@@ -69,14 +79,11 @@ self.addEventListener("message", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
+  // Workbox exclusively handles app navigation and precached build assets.
+  if (request.mode === 'navigate') return;
 
   if (request.method === "GET" && isCacheableApiPath(url.pathname)) {
     event.respondWith(handleApiRequest(event, request, url));
-    return;
-  }
-
-  if (request.mode === "navigate" && url.origin === self.location.origin) {
-    event.respondWith(handleNavigationRequest(request));
     return;
   }
 
@@ -122,7 +129,6 @@ function makeCacheKey(url, sessionId, request) {
     headers: new Headers(request.headers),
   });
 }
-
 function withoutSessionHeader(request) {
   const headers = new Headers(request.headers);
   headers.delete(SESSION_HEADER);
@@ -180,12 +186,8 @@ async function purgeApiCache() {
 }
 
 async function notifySessionExpired(clientId) {
-  if (!clientId) {
-    return;
-  }
-
-  const client = await self.clients.get(clientId);
-  client?.postMessage({ type: "API_CACHE_SESSION_EXPIRED" });
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  clients.forEach((client) => client.postMessage({ type: 'API_CACHE_SESSION_EXPIRED' }));
 }
 
 async function handleApiRequest(event, request, url) {
@@ -253,7 +255,11 @@ async function handleApiRequest(event, request, url) {
   const cached = await getFreshApiResponse(cache, metadataCache, cacheKey);
 
   if (cached) {
-    return cached;
+    const headers = new Headers(cached.headers);
+    headers.set('X-Offline-Cache', 'true');
+    const metadata = await metadataCache.match(cacheKey);
+    headers.set('X-Offline-Cached-At', await metadata?.text() || '');
+    return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers });
   }
 
   return new Response(JSON.stringify({ message: "API request timed out" }), {
@@ -272,7 +278,8 @@ function isCacheableStaticRequest(request, url) {
   );
 
   if (url.origin === self.location.origin) {
-    return staticDestination;
+    // Workbox owns same-origin build assets, with revision-aware cleanup.
+    return false;
   }
 
   return EXTERNAL_STATIC_HOSTS.has(url.hostname) && staticDestination;
@@ -318,26 +325,5 @@ function handleStaticRequest(event, request) {
     }
   });
 }
+// End of runtime handlers; precache lifecycle is managed by Workbox.
 
-async function handleNavigationRequest(request) {
-  const cache = await caches.open(STATIC_CACHE_NAME);
-
-  try {
-    const response = await fetch(request);
-
-    if (response.ok) {
-      await cache.put(request, response.clone()).catch(() => undefined);
-    }
-
-    return response;
-  } catch {
-    const cachedRoute = await cache.match(request);
-
-    if (cachedRoute) {
-      return cachedRoute;
-    }
-
-    const appShell = await cache.match(self.registration.scope);
-    return appShell ?? new Response("App unavailable offline", { status: 503 });
-  }
-}

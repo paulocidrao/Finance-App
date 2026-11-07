@@ -34,6 +34,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { useHomeController } from './home.controller'
 
 const {
+  isOnline,
   summary,
   selectedMonth,
   selectedMonthLabel,
@@ -74,7 +75,7 @@ const {
               </SelectItem>
             </SelectContent>
           </Select>
-          <Button type="button" class="shrink-0 rounded-xl" @click="openNewTransaction">
+          <Button type="button" class="shrink-0 rounded-xl" :disabled="!isOnline" @click="openNewTransaction">
             <Plus class="size-4" />
             <span class="hidden sm:inline">Nova transação</span>
             <span class="sm:hidden">Adicionar</span>
@@ -178,7 +179,7 @@ const {
               <p class="mt-1 max-w-xs text-xs text-muted-foreground">Adicione sua primeira transação para acompanhar sua
                 vida
                 financeira aqui.</p>
-              <Button size="sm" class="mt-4 rounded-xl" @click="openNewTransaction">
+              <Button size="sm" class="mt-4 rounded-xl" :disabled="!isOnline" @click="openNewTransaction">
                 <Plus class="mr-1 size-4" /> Adicionar transação
               </Button>
             </div>

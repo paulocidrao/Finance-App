@@ -2,6 +2,8 @@
 import { CalendarDays, Check, Trash2 } from '@lucide/vue'
 import { useQuery } from '@tanstack/vue-query'
 import { computed, reactive, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
+import { useNetworkStatus } from '@/utils/network-status'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,6 +26,7 @@ import type { NewTransactionInput, Transaction, TransactionType } from '@/views/
 import { normalizeAmountInput, parseAmount, formatLongDate } from './new-transaction.service'
 
 const open = defineModel<boolean>('open', { default: false })
+const { isOnline } = useNetworkStatus()
 const props = defineProps<{ transaction: Transaction | null }>()
 const emit = defineEmits<{
   saved: [payload: NewTransactionInput]
@@ -81,6 +84,10 @@ function setType(value: unknown): void {
 }
 
 function submit(): void {
+  if (!isOnline.value) {
+    toast.error('Você está offline. Conecte-se para salvar alterações.')
+    return
+  }
   const amount = parseAmount(form.amount)
   const description = form.description.trim()
   if (!amount) error.value = 'Informe um valor maior que zero.'
@@ -91,6 +98,14 @@ function submit(): void {
     emit('saved', { type: form.type, amount, description, category: form.category, date: form.date })
     open.value = false
   }
+}
+
+function requestDelete(): void {
+  if (!isOnline.value) {
+    toast.error('Você está offline. Conecte-se para salvar alterações.')
+    return
+  }
+  emit('deleted')
 }
 
 function openDatePicker(): void {
@@ -126,8 +141,8 @@ function openDatePicker(): void {
         <p v-if="error" class="text-sm text-red-400" role="alert">{{ error }}</p>
 
         <DialogFooter class="flex-row items-center justify-between gap-2 pt-2">
-          <Button variant="ghost" type="button" class="text-red-400 hover:text-red-400" @click="emit('deleted')"><Trash2 />Excluir</Button>
-          <div class="flex gap-2"><DialogClose as-child><Button variant="outline" type="button" class="dark:bg-background">Cancelar</Button></DialogClose><Button type="submit" class="bg-green-500 text-green-950 hover:bg-green-400"><Check />Salvar alterações</Button></div>
+          <Button variant="ghost" type="button" class="text-red-400 hover:text-red-400" :disabled="!isOnline" @click="requestDelete"><Trash2 />Excluir</Button>
+          <div class="flex gap-2"><DialogClose as-child><Button variant="outline" type="button" class="dark:bg-background">Cancelar</Button></DialogClose><Button type="submit" class="bg-green-500 text-green-950 hover:bg-green-400" :disabled="!isOnline"><Check />Salvar alterações</Button></div>
         </DialogFooter>
       </form>
     </DialogContent>
