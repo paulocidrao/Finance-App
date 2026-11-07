@@ -77,6 +77,7 @@
               <Button
                 :id="LOGIN_SUBMIT_ID"
                 type="submit"
+                :disabled="!isOnline || isSubmitting"
                 class="mt-1 h-12 w-full rounded-xl bg-[#536348] text-base font-semibold text-[#f4ecde] shadow-sm hover:bg-[#414b36] focus-visible:ring-[#536348]/40"
               >
                 <Spinner v-if="isSubmitting" aria-hidden="true" />
@@ -115,6 +116,7 @@ import { LOGIN_FIELD_IDS, LOGIN_SUBMIT_ID, useLoginController } from './login.co
 useTitle('Entrar · Meu Bolso', { restoreOnUnmount: (originalTitle) => originalTitle });
 
 const {
+  isOnline,
   form,
   errors,
   backendError,

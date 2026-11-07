@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { CalendarDays } from '@lucide/vue'
 import { ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
+import { useNetworkStatus } from '@/utils/network-status'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -25,6 +27,7 @@ import type { NewTransactionInput } from '@/views/transactions/transactions.serv
 import { useNewTransactionController } from './new-transaction.controller'
 
 const open = defineModel<boolean>('open', { default: false })
+const { isOnline } = useNetworkStatus()
 
 const emit = defineEmits<{
   created: [payload: NewTransactionInput]
@@ -51,6 +54,10 @@ watch(open, (isOpen) => {
 })
 
 function submit(): void {
+  if (!isOnline.value) {
+    toast.error('Você está offline. Conecte-se para salvar alterações.')
+    return
+  }
   const payload = buildPayload()
 
   if (!payload) {
@@ -203,6 +210,7 @@ function openDatePicker(): void {
 
           <Button
             type="submit"
+            :disabled="!isOnline"
             class="h-9"
             :class="
               form.type === 'expense'

@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { toast } from 'vue-sonner'
+import { useNetworkStatus } from '@/utils/network-status'
 import {
   CATEGORIES_QUERY_KEY,
   createCategory,
@@ -21,6 +22,7 @@ function formatCount(count: number): string {
 }
 
 export function useCategoriesController() {
+  const { isOnline } = useNetworkStatus()
   const queryClient = useQueryClient()
   const categoriesQuery = useQuery({
     queryKey: CATEGORIES_QUERY_KEY,
@@ -66,6 +68,10 @@ export function useCategoriesController() {
   )
 
   function openCreateCategory(): void {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.')
+      return
+    }
     editingCategory.value = null
     categoryForm.name = ''
     categoryForm.type = 'expense'
@@ -74,6 +80,10 @@ export function useCategoriesController() {
   }
 
   function openEditCategory(category: Category): void {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.')
+      return
+    }
     editingCategory.value = category
     categoryForm.name = category.name
     categoryForm.type = category.type
@@ -86,6 +96,10 @@ export function useCategoriesController() {
   }
 
   async function submitCategory(): Promise<void> {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.')
+      return
+    }
     const name = categoryForm.name.trim()
 
     if (!name) {
@@ -146,6 +160,10 @@ export function useCategoriesController() {
   }
 
   async function deleteCategory(category: Category): Promise<void> {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.')
+      return
+    }
     if (category.transactionCount > 0) {
       toast.error('Não foi possível excluir', {
         description: `Há transações vinculadas a “${category.name}”.`,
@@ -171,6 +189,7 @@ export function useCategoriesController() {
   }
 
   return {
+    isOnline,
     categoryGroups,
     isDialogOpen,
     isEditing,

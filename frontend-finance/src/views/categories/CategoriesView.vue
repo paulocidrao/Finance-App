@@ -22,6 +22,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { useCategoriesController } from './categories.controller'
 
 const {
+  isOnline,
   categoryGroups,
   isDialogOpen,
   isEditing,
@@ -46,7 +47,7 @@ const {
         </p>
       </div>
 
-      <Button type="button" class="w-fit" @click="openCreateCategory">
+      <Button type="button" class="w-fit" :disabled="!isOnline" @click="openCreateCategory">
         <Plus />
         Nova categoria
       </Button>
@@ -81,6 +82,7 @@ const {
             size="icon"
             class="size-9 text-muted-foreground"
             type="button"
+            :disabled="!isOnline"
             @click="openEditCategory(category)"
           >
             <SquarePen />
@@ -92,6 +94,7 @@ const {
             size="icon"
             class="size-9 text-muted-foreground hover:text-destructive"
             type="button"
+            :disabled="!isOnline"
             @click="deleteCategory(category)"
           >
             <Trash2 />
@@ -146,7 +149,7 @@ const {
             <Button type="button" variant="outline" @click="isDialogOpen = false">
               Cancelar
             </Button>
-            <Button type="submit">
+            <Button type="submit" :disabled="!isOnline">
               {{ isEditing ? 'Salvar' : 'Criar categoria' }}
             </Button>
           </DialogFooter>

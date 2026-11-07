@@ -1,5 +1,6 @@
 import { nextTick, reactive, ref, watch } from "vue";
 import { toast } from "vue-sonner";
+import { useNetworkStatus } from '@/utils/network-status';
 import router from "@/router";
 import { signin, SigninError } from "./signin.service";
 import {
@@ -34,6 +35,7 @@ function focusField(field: SigninField): Promise<void> {
 }
 
 export function useSigninController() {
+  const { isOnline } = useNetworkStatus();
   const form = reactive<SigninFormValues>({
     name: "",
     email: "",
@@ -87,6 +89,10 @@ export function useSigninController() {
   }
 
   async function handleSubmit(): Promise<void> {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.');
+      return;
+    }
     if (isSubmitting.value) return;
 
     backendError.value = "";
@@ -137,6 +143,7 @@ export function useSigninController() {
   }
 
   return {
+    isOnline,
     form,
     errors,
     backendError,
