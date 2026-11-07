@@ -1,3 +1,54 @@
+import {
+  cleanupOutdatedCaches,
+  createHandlerBoundToURL,
+  precacheAndRoute,
+} from "workbox-precaching";
+import { BackgroundSyncPlugin } from "workbox-background-sync";
+import { NavigationRoute, registerRoute } from "workbox-routing";
+import { NetworkOnly } from "workbox-strategies";
+
+precacheAndRoute(self.__WB_MANIFEST);
+cleanupOutdatedCaches();
+
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL("/index.html"), {
+    denylist: [/^\/api\//, /^\/docs\//],
+  }),
+);
+
+// O injectManifest não gera runtimeCaching automaticamente. Esta rota mantém
+// o POST da criação de transações em fila e o repete assim que houver rede.
+const transactionsWriteQueue = new BackgroundSyncPlugin(
+  "transactions-write-queue",
+  { maxRetentionTime: 24 * 60 },
+);
+const API_ORIGIN = new URL(
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/",
+).origin;
+const transactionWriteStrategy = new NetworkOnly({
+  plugins: [transactionsWriteQueue],
+});
+
+registerRoute(
+  ({ request, url }) =>
+    request.method === "POST" &&
+    url.origin === API_ORIGIN &&
+    /^\/transactions\/?$/.test(url.pathname),
+  async ({ event, request }) => {
+    try {
+      return await transactionWriteStrategy.handle({ event, request });
+    } catch {
+      // O BackgroundSyncPlugin já colocou a requisição na fila. Responder 202
+      // evita que o Axios trate a operação enfileirada como uma falha.
+      return new Response(JSON.stringify({ queued: true }), {
+        status: 202,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  },
+  "POST",
+);
+
 const API_CACHE_NAME = "api-cache";
 const API_METADATA_CACHE_NAME = "api-cache-metadata";
 const STATIC_CACHE_NAME = "static-cache-v1";
@@ -129,7 +180,12 @@ function withoutSessionHeader(request) {
   return new Request(request, { headers });
 }
 
-async function getFreshApiResponse(cache, metadataCache, cacheKey) {
+async function getCachedApiResponse(
+  cache,
+  metadataCache,
+  cacheKey,
+  { allowStale = false } = {},
+) {
   const cached = await cache.match(cacheKey);
 
   if (!cached) {
@@ -140,7 +196,7 @@ async function getFreshApiResponse(cache, metadataCache, cacheKey) {
   const metadata = await metadataCache.match(cacheKey);
   const cachedAt = Number(await metadata?.text()) || 0;
 
-  if (!cachedAt || Date.now() - cachedAt > API_CACHE_TTL_MS) {
+  if (!cachedAt || (!allowStale && Date.now() - cachedAt > API_CACHE_TTL_MS)) {
     await Promise.all([cache.delete(cacheKey), metadataCache.delete(cacheKey)]);
     return null;
   }
@@ -250,7 +306,11 @@ async function handleApiRequest(event, request, url) {
 
   const cache = await caches.open(API_CACHE_NAME);
   const metadataCache = await caches.open(API_METADATA_CACHE_NAME);
-  const cached = await getFreshApiResponse(cache, metadataCache, cacheKey);
+  // Em modo offline, a última resposta conhecida mantém as páginas utilizáveis
+  // mesmo que tenha ultrapassado o TTL de atualização normal.
+  const cached = await getCachedApiResponse(cache, metadataCache, cacheKey, {
+    allowStale: true,
+  });
 
   if (cached) {
     return cached;

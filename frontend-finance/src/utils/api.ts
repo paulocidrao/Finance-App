@@ -1,7 +1,8 @@
 import axios from "axios";
 import { getOfflineCacheSessionHeader } from "./offline-cache";
 
-const API_BASE_URL = "http://localhost:3000/";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -23,7 +24,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      window.location.href = "http://localhost:5173/login";
+      window.location.href = `${import.meta.env.VITE_APP_URL ?? window.location.origin}/login`;
     }
 
     return Promise.reject(error);
