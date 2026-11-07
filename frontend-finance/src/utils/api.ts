@@ -19,6 +19,16 @@ const cacheablePaths = new Set([
   "/users/me",
 ]);
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      window.location.href = "http://localhost:5173/login";
+    }
+
+    return Promise.reject(error);
+  },
+);
 api.interceptors.request.use((config) => {
   if (config.method?.toLowerCase() !== "get" || !config.url) {
     return config;
