@@ -2,13 +2,14 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import "./style.css";
 import App from "./App.vue";
+import { startConnectivityMonitoring } from './utils/network-status';
 import router from "./router";
 import { queryClient } from "./utils/vue-query.ts";
 import {
   VueQueryPlugin,
   type VueQueryPluginOptions,
 } from "@tanstack/vue-query";
-import { forgetOfflineCacheSession } from "./utils/offline-cache";
+import { endSession } from "./utils/session";
 const vueQueryPluginOptions: VueQueryPluginOptions = {
   queryClient: queryClient,
 };
@@ -23,10 +24,9 @@ navigator.serviceWorker?.addEventListener("message", (event: MessageEvent) => {
     return;
   }
 
-  forgetOfflineCacheSession();
-  queryClient.clear();
-  void router.replace({ name: "login" });
+  void endSession();
 });
 
 // O service worker é registrado pelo <UpdatePrompt /> (AppLayout).
 app.mount("#app");
+startConnectivityMonitoring();

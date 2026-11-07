@@ -7,6 +7,8 @@ dist/
 dist-ssr/
 .vite/
 coverage/
+lighthouse-report*.html
+lighthouse-report*.json
 
 # Logs and debug files
 logs/

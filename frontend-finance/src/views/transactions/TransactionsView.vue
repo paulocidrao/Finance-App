@@ -68,6 +68,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import { useTransactionsController } from './transactions.controller'
 
 const {
+  isOnline,
   search,
   categoryFilter,
   typeFilter,
@@ -113,7 +114,7 @@ const {
         <p class="text-sm text-muted-foreground">Todas as suas entradas e despesas.</p>
       </div>
 
-      <Button type="button" class="w-fit" @click="openNewTransaction">
+      <Button type="button" class="w-fit" :disabled="!isOnline" @click="openNewTransaction">
         <Plus />
         Nova transação
       </Button>
@@ -260,6 +261,7 @@ const {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
+                      :disabled="!isOnline"
                       @select="requestDeleteTransaction(transaction)"
                     >
                       <Trash2 />
@@ -405,6 +407,7 @@ const {
               variant="outline"
               type="button"
               class="h-9 w-full justify-center dark:bg-background"
+              :disabled="!isOnline"
               @click="editTransaction(selectedTransaction)"
             >
               <SquarePen />
@@ -415,6 +418,7 @@ const {
               variant="outline"
               type="button"
               class="h-9 w-full justify-center border-input text-red-400 hover:text-red-400 dark:bg-background"
+              :disabled="!isOnline"
               @click="requestDeleteTransaction(selectedTransaction)"
             >
               <Trash2 />
@@ -441,6 +445,7 @@ const {
           <AlertDialogCancel class="dark:bg-background">Cancelar</AlertDialogCancel>
           <AlertDialogAction
             class="bg-[#b91c1c] text-white hover:bg-[#991b1b] focus-visible:ring-destructive/40"
+            :disabled="!isOnline"
             @click="confirmDeleteTransaction"
           >
             Excluir

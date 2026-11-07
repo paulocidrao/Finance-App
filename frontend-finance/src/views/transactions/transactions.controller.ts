@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, ref, watch } from "vue";
 import { toast } from "vue-sonner";
+import { useNetworkStatus } from '@/utils/network-status';
 import {
   createTransaction,
   deleteTransaction,
@@ -102,6 +103,7 @@ function formatSignedAmount(transaction: Transaction): string {
 }
 
 export function useTransactionsController() {
+  const { isOnline } = useNetworkStatus();
   const queryClient = useQueryClient();
   const selectedMonth = ref(getMonthKey(new Date()));
   const monthOptions = computed(() => {
@@ -207,6 +209,10 @@ export function useTransactionsController() {
   }
 
   async function removeTransaction(id: string | number): Promise<boolean> {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.');
+      return false;
+    }
     try {
       await deleteTransaction(id);
       await queryClient.invalidateQueries({ queryKey: TRANSACTIONS_QUERY_KEY });
@@ -222,10 +228,18 @@ export function useTransactionsController() {
   }
 
   function openNewTransaction(): void {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.');
+      return;
+    }
     isNewTransactionOpen.value = true;
   }
 
   async function addTransaction(payload: NewTransactionInput): Promise<void> {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.');
+      return;
+    }
     try {
       await createTransaction(payload);
       await queryClient.invalidateQueries({ queryKey: TRANSACTIONS_QUERY_KEY });
@@ -255,12 +269,20 @@ export function useTransactionsController() {
   }
 
   function editTransaction(transaction: Transaction): void {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.');
+      return;
+    }
     isDetailsOpen.value = false;
     selectedTransaction.value = transaction;
     isEditTransactionOpen.value = true;
   }
 
   async function saveEditedTransaction(payload: NewTransactionInput): Promise<void> {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.');
+      return;
+    }
     const transaction = selectedTransaction.value;
 
     if (!transaction) return;
@@ -284,6 +306,10 @@ export function useTransactionsController() {
   }
 
   function deleteEditedTransaction(): void {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.');
+      return;
+    }
     const transaction = selectedTransaction.value;
 
     if (!transaction) return;
@@ -293,11 +319,19 @@ export function useTransactionsController() {
   }
 
   function requestDeleteTransaction(transaction: Transaction): void {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.');
+      return;
+    }
     transactionPendingDelete.value = transaction;
     isDeleteDialogOpen.value = true;
   }
 
   async function confirmDeleteTransaction(): Promise<void> {
+    if (!isOnline.value) {
+      toast.error('Você está offline. Conecte-se para salvar alterações.');
+      return;
+    }
     const transaction = transactionPendingDelete.value;
     if (!transaction) {
       return;
@@ -321,6 +355,7 @@ export function useTransactionsController() {
   }
 
   return {
+    isOnline,
     search,
     categoryFilter,
     typeFilter,

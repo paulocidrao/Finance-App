@@ -15,11 +15,12 @@ export default defineConfig({
       srcDir: "src",
       filename: "sw.js",
       injectManifest: {
-        injectionPoint: undefined,
+        globPatterns: ['**/*.{js,css,html,png,svg,webp,woff2,webmanifest}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       manifest: false,
       devOptions: {
-        enabled: true,
+        enabled: false,
         type: "classic",
       },
     }),
