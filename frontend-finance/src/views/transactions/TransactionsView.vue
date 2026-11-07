@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  Loader2,
   MoreHorizontal,
   Plus,
   Search,
@@ -12,7 +13,6 @@ import {
 } from '@lucide/vue'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -65,7 +65,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import NewTransactionDialog from '@/components/transactions/NewTransactionDialog.vue'
 import EditTransactionDialog from '@/components/transactions/EditTransactionDialog.vue'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import { useTransactionsController } from './transactions.controller'
+import { TRANSACTIONS_SEARCH_ID, useTransactionsController } from './transactions.controller'
 
 const {
   isOnline,
@@ -86,8 +86,12 @@ const {
   isDetailsOpen,
   transactionPendingDelete,
   isDeleteDialogOpen,
+  isDeleting,
+  deleteError,
   isNewTransactionOpen,
   isEditTransactionOpen,
+  isSavingEdit,
+  editError,
   formatDate,
   formatLongDate,
   formatCreatedAt,
@@ -98,10 +102,12 @@ const {
   openNewTransaction,
   addTransaction,
   openDetails,
+  handleCloseAutoFocus,
   editTransaction,
   saveEditedTransaction,
   deleteEditedTransaction,
   requestDeleteTransaction,
+  setDeleteDialogOpen,
   confirmDeleteTransaction,
 } = useTransactionsController()
 </script>
@@ -127,8 +133,10 @@ const {
             class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
           />
           <Input
+            :id="TRANSACTIONS_SEARCH_ID"
             v-model="search"
             type="text"
+            aria-label="Buscar por descrição"
             placeholder="Buscar por descrição"
             class="h-9 pl-9 dark:bg-background"
           />
@@ -336,10 +344,11 @@ const {
       <SheetContent
         side="right"
         class="w-full gap-5 overflow-y-auto p-6 [&>button]:top-6 [&>button]:right-6 sm:max-w-[420px]"
+        @close-auto-focus="handleCloseAutoFocus"
       >
         <template v-if="selectedTransaction">
           <SheetHeader class="gap-1.5 p-0 pr-8">
-            <SheetTitle class="text-lg leading-tight font-semibold">
+            <SheetTitle class="text-lg leading-tight font-semibold break-words">
               {{ selectedTransaction.description }}
             </SheetTitle>
             <SheetDescription>Detalhes da transação</SheetDescription>
@@ -359,50 +368,44 @@ const {
             </Badge>
 
             <p
-              class="text-[36px] leading-none font-bold"
+              class="text-[36px] leading-none font-bold tabular-nums"
               :class="
                 selectedTransaction.type === 'income' ? 'text-green-400' : 'text-red-400'
               "
             >
+              <span class="sr-only">Valor: </span>
               {{ formatSignedAmount(selectedTransaction) }}
             </p>
           </div>
 
-          <div class="h-px w-full shrink-0 bg-border" />
-
-          <div class="flex items-center gap-2 text-sm">
-            <span class="flex-1 text-muted-foreground">Categoria</span>
-            <span class="font-medium">{{ selectedTransaction.category }}</span>
-          </div>
-
-          <div class="h-px w-full shrink-0 bg-border" />
-
-          <div class="flex items-center gap-2 text-sm">
-            <span class="flex-1 text-muted-foreground">Data</span>
-            <span class="font-medium">{{ formatLongDate(selectedTransaction.date) }}</span>
-          </div>
-
-          <div class="h-px w-full shrink-0 bg-border" />
-
-          <div class="flex items-center gap-2 text-sm">
-            <span class="flex-1 text-muted-foreground">Criada em</span>
-            <span class="font-medium">
-              {{ formatCreatedAt(selectedTransaction.createdAt) }}
-            </span>
-          </div>
-
-          <div class="h-px w-full shrink-0 bg-border" />
-
-          <div class="flex items-center gap-2 text-sm">
-            <span class="flex-1 text-muted-foreground">Tipo</span>
-            <span class="font-medium">
-              {{ selectedTransaction.type === 'income' ? 'Entrada' : 'Despesa' }}
-            </span>
-          </div>
+          <dl class="flex flex-col divide-y divide-border border-t border-border text-sm">
+            <div class="flex items-center gap-4 py-4">
+              <dt class="flex-1 text-muted-foreground">Categoria</dt>
+              <dd class="text-right font-medium">{{ selectedTransaction.category }}</dd>
+            </div>
+            <div class="flex items-center gap-4 py-4">
+              <dt class="flex-1 text-muted-foreground">Data</dt>
+              <dd class="text-right font-medium">{{ formatLongDate(selectedTransaction.date) }}</dd>
+            </div>
+            <div class="flex items-center gap-4 py-4">
+              <dt class="flex-1 text-muted-foreground">Criada em</dt>
+              <dd class="text-right font-medium">{{ formatCreatedAt(selectedTransaction.createdAt) }}</dd>
+            </div>
+            <div class="flex items-center gap-4 py-4">
+              <dt class="flex-1 text-muted-foreground">Tipo</dt>
+              <dd class="text-right font-medium">
+                {{ selectedTransaction.type === 'income' ? 'Entrada' : 'Despesa' }}
+              </dd>
+            </div>
+          </dl>
 
           <div class="min-h-0 flex-1" />
 
           <SheetFooter class="mt-auto gap-2 p-0">
+            <p v-if="!isOnline" role="status" class="text-xs text-muted-foreground">
+              Você está offline. Conecte-se para editar ou excluir esta transação.
+            </p>
+
             <Button
               variant="outline"
               type="button"
@@ -410,18 +413,18 @@ const {
               :disabled="!isOnline"
               @click="editTransaction(selectedTransaction)"
             >
-              <SquarePen />
+              <SquarePen aria-hidden="true" />
               Editar transação
             </Button>
 
             <Button
               variant="outline"
               type="button"
-              class="h-9 w-full justify-center border-input text-red-400 hover:text-red-400 dark:bg-background"
+              class="h-9 w-full justify-center border-input text-destructive hover:text-destructive dark:bg-background"
               :disabled="!isOnline"
               @click="requestDeleteTransaction(selectedTransaction)"
             >
-              <Trash2 />
+              <Trash2 aria-hidden="true" />
               Excluir
             </Button>
           </SheetFooter>
@@ -429,8 +432,11 @@ const {
       </SheetContent>
     </Sheet>
 
-    <AlertDialog v-model:open="isDeleteDialogOpen">
-      <AlertDialogContent class="gap-4 rounded-[12px] p-6 sm:max-w-[440px]">
+    <AlertDialog :open="isDeleteDialogOpen" @update:open="setDeleteDialogOpen">
+      <AlertDialogContent
+        class="gap-4 rounded-[12px] p-6 sm:max-w-[440px]"
+        @close-auto-focus="handleCloseAutoFocus"
+      >
         <AlertDialogHeader class="gap-2 text-left">
           <AlertDialogTitle>Excluir transação?</AlertDialogTitle>
           <AlertDialogDescription class="leading-[150%]">
@@ -441,15 +447,32 @@ const {
           </AlertDialogDescription>
         </AlertDialogHeader>
 
+        <p
+          v-if="deleteError"
+          role="alert"
+          class="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          {{ deleteError }}
+        </p>
+        <p v-else-if="!isOnline" role="status" class="text-sm text-muted-foreground">
+          Você está offline. Conecte-se para excluir.
+        </p>
+
         <AlertDialogFooter>
-          <AlertDialogCancel class="dark:bg-background">Cancelar</AlertDialogCancel>
-          <AlertDialogAction
+          <AlertDialogCancel :disabled="isDeleting" class="dark:bg-background">Cancelar</AlertDialogCancel>
+          <!-- Botão comum (não AlertDialogAction) para o diálogo ficar aberto durante a exclusão.
+               aria-disabled (e não disabled) para o foco não se perder. -->
+          <Button
+            type="button"
             class="bg-[#b91c1c] text-white hover:bg-[#991b1b] focus-visible:ring-destructive/40"
+            :class="isDeleting ? 'cursor-progress opacity-70' : ''"
             :disabled="!isOnline"
+            :aria-disabled="isDeleting || undefined"
             @click="confirmDeleteTransaction"
           >
-            Excluir
-          </AlertDialogAction>
+            <Loader2 v-if="isDeleting" class="animate-spin" aria-hidden="true" />
+            {{ isDeleting ? 'Excluindo…' : 'Excluir' }}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -458,8 +481,11 @@ const {
     <EditTransactionDialog
       v-model:open="isEditTransactionOpen"
       :transaction="selectedTransaction"
+      :saving="isSavingEdit"
+      :server-error="editError"
       @saved="saveEditedTransaction"
       @deleted="deleteEditedTransaction"
+      @close-auto-focus="handleCloseAutoFocus"
     />
   </DashboardLayout>
 </template>

@@ -1,7 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
-import { computed, ref, watch } from "vue";
+import { isAxiosError } from "axios";
+import { computed, nextTick, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { useNetworkStatus } from '@/utils/network-status';
+import { CATEGORIES_QUERY_KEY, type Category } from "@/views/categories/categories.service";
 import {
   createTransaction,
   deleteTransaction,
@@ -14,6 +16,9 @@ import {
 import { getTransactions } from "./transactions.service";
 
 export type TypeFilter = "all" | TransactionType;
+
+/** Campo de busca da tela; recebe o foco depois de uma exclusão. */
+export const TRANSACTIONS_SEARCH_ID = "transactions-search";
 
 const PAGE_SIZE = 8;
 const TRANSACTIONS_QUERY_KEY = ["transactions"] as const;
@@ -71,7 +76,7 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 function normalizeText(value: string): string {
   return value
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .trim();
 }
@@ -88,18 +93,44 @@ function formatLongDate(value: string): string {
   return `${Number(day)} de ${MONTHS_LONG[Number(month) - 1]} de ${year}`;
 }
 
-function formatCreatedAt(value: string): string {
-  const [datePart, timePart = "00:00"] = value.split("T");
-  const [year, month, day] = datePart.split("-");
-  const [hour, minute] = timePart.split(":");
+const createdAtFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
-  return `${day}/${month}/${year} às ${hour}:${minute}`;
+// A API envia createdAt em UTC (…Z); exibe no fuso de quem está usando.
+function formatCreatedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const parts = Object.fromEntries(
+    createdAtFormatter.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+
+  return `${parts.day}/${parts.month}/${parts.year} às ${parts.hour}:${parts.minute}`;
 }
 
 function formatSignedAmount(transaction: Transaction): string {
   const sign = transaction.type === "income" ? "+" : "−";
 
   return `${sign} ${currencyFormatter.format(transaction.amount)}`;
+}
+
+function errorStatus(error: unknown): number | undefined {
+  return isAxiosError(error) ? error.response?.status : undefined;
+}
+
+// Sem resposta do servidor: offline, API fora do ar ou CORS.
+function isNetworkError(error: unknown): boolean {
+  return isAxiosError(error) && !error.response;
+}
+
+async function focusElement(id: string): Promise<void> {
+  await nextTick();
+  document.getElementById(id)?.focus();
 }
 
 export function useTransactionsController() {
@@ -208,43 +239,31 @@ export function useTransactionsController() {
       value === "income" || value === "expense" ? value : "all";
   }
 
-  async function removeTransaction(id: string | number): Promise<boolean> {
-    if (!isOnline.value) {
-      toast.error('Você está offline. Conecte-se para salvar alterações.');
-      return false;
-    }
-    try {
-      await deleteTransaction(id);
-      await queryClient.invalidateQueries({ queryKey: TRANSACTIONS_QUERY_KEY });
-      await queryClient.invalidateQueries({ queryKey: ["home", "summary"] });
-      await queryClient.invalidateQueries({ queryKey: HOME_CATEGORY_SUMMARY_QUERY_KEY });
-      return true;
-    } catch {
-      toast.error("Não foi possível excluir", {
-        description: "Tente novamente em instantes.",
-      });
-      return false;
-    }
+  function canMutate(): boolean {
+    if (isOnline.value) return true;
+    toast.error("Você está offline. Conecte-se para salvar alterações.");
+    return false;
+  }
+
+  // Lista, resumo do mês e despesas por categoria dependem das transações.
+  function refreshTransactionData(): Promise<unknown> {
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: TRANSACTIONS_QUERY_KEY }),
+      queryClient.invalidateQueries({ queryKey: ["home", "summary"] }),
+      queryClient.invalidateQueries({ queryKey: HOME_CATEGORY_SUMMARY_QUERY_KEY }),
+    ]);
   }
 
   function openNewTransaction(): void {
-    if (!isOnline.value) {
-      toast.error('Você está offline. Conecte-se para salvar alterações.');
-      return;
-    }
+    if (!canMutate()) return;
     isNewTransactionOpen.value = true;
   }
 
   async function addTransaction(payload: NewTransactionInput): Promise<void> {
-    if (!isOnline.value) {
-      toast.error('Você está offline. Conecte-se para salvar alterações.');
-      return;
-    }
+    if (!canMutate()) return;
     try {
       await createTransaction(payload);
-      await queryClient.invalidateQueries({ queryKey: TRANSACTIONS_QUERY_KEY });
-      await queryClient.invalidateQueries({ queryKey: ["home", "summary"] });
-      await queryClient.invalidateQueries({ queryKey: HOME_CATEGORY_SUMMARY_QUERY_KEY });
+      await refreshTransactionData();
       search.value = "";
       categoryFilter.value = "all";
       typeFilter.value = "all";
@@ -263,95 +282,155 @@ export function useTransactionsController() {
     }
   }
 
+  // ── Drawer de detalhes ──────────────────────────────────────────────────
+  // Depois de uma exclusão, o elemento que abriu o drawer/diálogo some da
+  // lista; o foco vai para a busca em vez de se perder no <body>.
+  let focusSearchOnClose = false;
+
   function openDetails(transaction: Transaction): void {
+    focusSearchOnClose = false;
     selectedTransaction.value = transaction;
     isDetailsOpen.value = true;
   }
 
+  function handleCloseAutoFocus(event: Event): void {
+    if (!focusSearchOnClose) return;
+    event.preventDefault();
+    void focusElement(TRANSACTIONS_SEARCH_ID);
+  }
+
+  // ── Edição ──────────────────────────────────────────────────────────────
+  const isSavingEdit = ref(false);
+  const editError = ref("");
+
   function editTransaction(transaction: Transaction): void {
-    if (!isOnline.value) {
-      toast.error('Você está offline. Conecte-se para salvar alterações.');
-      return;
-    }
-    isDetailsOpen.value = false;
+    if (!canMutate()) return;
+    focusSearchOnClose = false;
     selectedTransaction.value = transaction;
+    editError.value = "";
+    // O drawer continua aberto por baixo: ao cancelar, a pessoa volta para ele.
     isEditTransactionOpen.value = true;
   }
 
-  async function saveEditedTransaction(payload: NewTransactionInput): Promise<void> {
-    if (!isOnline.value) {
-      toast.error('Você está offline. Conecte-se para salvar alterações.');
-      return;
-    }
-    const transaction = selectedTransaction.value;
+  function findCategoryName(categoryId: string): string | undefined {
+    return queryClient
+      .getQueryData<Category[]>(CATEGORIES_QUERY_KEY)
+      ?.find((category) => category.id === categoryId)?.name;
+  }
 
+  async function saveEditedTransaction(payload: NewTransactionInput): Promise<void> {
+    if (!canMutate() || isSavingEdit.value) return;
+    const transaction = selectedTransaction.value;
     if (!transaction) return;
+
+    isSavingEdit.value = true;
+    editError.value = "";
 
     try {
       const updated = await updateTransaction(transaction.id, payload);
+      const base = updated ?? {
+        ...transaction,
+        type: payload.type,
+        amount: payload.amount,
+        description: payload.description,
+        date: payload.date,
+      };
 
-      await queryClient.invalidateQueries({ queryKey: TRANSACTIONS_QUERY_KEY });
-      await queryClient.invalidateQueries({ queryKey: ["home", "summary"] });
-      await queryClient.invalidateQueries({ queryKey: HOME_CATEGORY_SUMMARY_QUERY_KEY });
-      selectedTransaction.value = updated ?? { ...transaction, ...payload };
+      // O PATCH não devolve o nome da categoria; ele vem da lista em cache.
+      selectedTransaction.value = {
+        ...base,
+        categoryId: payload.category,
+        category: findCategoryName(payload.category) ?? transaction.category,
+      };
       isEditTransactionOpen.value = false;
       toast.success("Transação atualizada", {
-        description: `“${selectedTransaction.value.description}” foi atualizada.`,
+        description: `“${payload.description}” foi atualizada.`,
       });
-    } catch {
-      toast.error("Não foi possível atualizar", {
-        description: "Tente novamente em instantes.",
-      });
+      void refreshTransactionData();
+    } catch (error) {
+      const status = errorStatus(error);
+
+      if (status === 404) {
+        isEditTransactionOpen.value = false;
+        isDetailsOpen.value = false;
+        toast.info("Essa transação já tinha sido excluída.");
+        void refreshTransactionData();
+      } else if (status === 400) {
+        editError.value =
+          "Não foi possível salvar com os dados informados. Revise os campos e tente novamente.";
+      } else if (isNetworkError(error)) {
+        editError.value =
+          "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.";
+      } else {
+        editError.value = "Não foi possível salvar as alterações. Tente novamente em instantes.";
+      }
+    } finally {
+      isSavingEdit.value = false;
     }
   }
 
-  function deleteEditedTransaction(): void {
-    if (!isOnline.value) {
-      toast.error('Você está offline. Conecte-se para salvar alterações.');
-      return;
-    }
-    const transaction = selectedTransaction.value;
-
-    if (!transaction) return;
-
-    isEditTransactionOpen.value = false;
-    requestDeleteTransaction(transaction);
-  }
+  // ── Exclusão com confirmação ────────────────────────────────────────────
+  const isDeleting = ref(false);
+  const deleteError = ref("");
 
   function requestDeleteTransaction(transaction: Transaction): void {
-    if (!isOnline.value) {
-      toast.error('Você está offline. Conecte-se para salvar alterações.');
-      return;
-    }
+    if (!canMutate()) return;
+    focusSearchOnClose = false;
     transactionPendingDelete.value = transaction;
+    deleteError.value = "";
     isDeleteDialogOpen.value = true;
   }
 
-  async function confirmDeleteTransaction(): Promise<void> {
-    if (!isOnline.value) {
-      toast.error('Você está offline. Conecte-se para salvar alterações.');
-      return;
-    }
-    const transaction = transactionPendingDelete.value;
-    if (!transaction) {
-      return;
-    }
+  // Pedido vindo do diálogo de edição: a confirmação abre por cima dele, e
+  // "Cancelar" devolve a pessoa à edição sem perder o que foi digitado.
+  function deleteEditedTransaction(): void {
+    const transaction = selectedTransaction.value;
+    if (transaction) requestDeleteTransaction(transaction);
+  }
 
-    const deleted = await removeTransaction(transaction.id);
+  // Esc, clique fora e Cancelar ficam bloqueados enquanto a exclusão é enviada.
+  function setDeleteDialogOpen(value: boolean): void {
+    if (!value && isDeleting.value) return;
+    isDeleteDialogOpen.value = value;
+  }
 
-    if (!deleted) {
-      return;
-    }
-
+  function finishDelete(transaction: Transaction): void {
+    focusSearchOnClose = true;
+    isDeleteDialogOpen.value = false;
     if (selectedTransaction.value?.id === transaction.id) {
+      isEditTransactionOpen.value = false;
       isDetailsOpen.value = false;
     }
+    void refreshTransactionData();
+  }
 
-    isDeleteDialogOpen.value = false;
+  async function confirmDeleteTransaction(): Promise<void> {
+    if (!canMutate()) return;
+    const transaction = transactionPendingDelete.value;
+    if (!transaction || isDeleting.value) return;
 
-    toast.success("Transação excluída", {
-      description: `“${transaction.description}” foi removida.`,
-    });
+    isDeleting.value = true;
+    deleteError.value = "";
+
+    try {
+      await deleteTransaction(transaction.id);
+      finishDelete(transaction);
+      toast.success("Transação excluída", {
+        description: `“${transaction.description}” foi removida.`,
+      });
+    } catch (error) {
+      if (errorStatus(error) === 404) {
+        finishDelete(transaction);
+        toast.info("Essa transação já tinha sido excluída.");
+      } else if (isNetworkError(error)) {
+        deleteError.value =
+          "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.";
+      } else {
+        deleteError.value = "Não foi possível excluir. Tente novamente em instantes.";
+      }
+    } finally {
+      isDeleting.value = false;
+    }
   }
 
   return {
@@ -374,8 +453,12 @@ export function useTransactionsController() {
     isDetailsOpen,
     transactionPendingDelete,
     isDeleteDialogOpen,
+    isDeleting,
+    deleteError,
     isNewTransactionOpen,
     isEditTransactionOpen,
+    isSavingEdit,
+    editError,
     formatDate,
     formatLongDate,
     formatCreatedAt,
@@ -385,10 +468,12 @@ export function useTransactionsController() {
     openNewTransaction,
     addTransaction,
     openDetails,
+    handleCloseAutoFocus,
     editTransaction,
     saveEditedTransaction,
     deleteEditedTransaction,
     requestDeleteTransaction,
+    setDeleteDialogOpen,
     confirmDeleteTransaction,
   };
 }

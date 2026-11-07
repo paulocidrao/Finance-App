@@ -7,7 +7,10 @@ export interface Transaction {
   date: string;
   createdAt: string;
   description: string;
+  /** Nome da categoria, para exibição. */
   category: string;
+  /** Id da categoria na API; é o valor usado pelos formulários. */
+  categoryId?: string | null;
   type: TransactionType;
   amount: number;
 }
@@ -234,6 +237,7 @@ function toTransaction(transaction: ApiTransaction): Transaction {
     createdAt: transaction.createdAt,
     description: transaction.description,
     category: transaction.categoryName ?? "Sem categoria",
+    categoryId: transaction.categoryId,
     type: transaction.type === "INCOME" ? "income" : "expense",
     amount: transaction.amountCents / 100,
   };
