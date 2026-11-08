@@ -48,15 +48,7 @@ registerRoute(
   },
   "POST",
 );
-import {
-  cleanupOutdatedCaches,
-  createHandlerBoundToURL,
-  precacheAndRoute,
-} from "workbox-precaching";
-import { NavigationRoute, registerRoute } from "workbox-routing";
 
-// All production chunks (including lazy-loaded routes) are cached at install.
-precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 const navigateFallback = "/index.html";
 registerRoute(
