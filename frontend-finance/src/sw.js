@@ -1,13 +1,61 @@
-import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
-import { NavigationRoute, registerRoute } from 'workbox-routing';
+import {
+  cleanupOutdatedCaches,
+  createHandlerBoundToURL,
+  precacheAndRoute,
+} from "workbox-precaching";
+import { BackgroundSyncPlugin } from "workbox-background-sync";
+import { NavigationRoute, registerRoute } from "workbox-routing";
+import { NetworkOnly } from "workbox-strategies";
 
-// All production chunks (including lazy-loaded routes) are cached at install.
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-const navigateFallback = '/index.html';
-registerRoute(new NavigationRoute(createHandlerBoundToURL(navigateFallback), {
-  denylist: [/^\/auth\//, /^\/api\//],
-}));
+
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL("/index.html"), {
+    denylist: [/^\/api\//, /^\/docs\//],
+  }),
+);
+
+// O injectManifest não gera runtimeCaching automaticamente. Esta rota mantém
+// o POST da criação de transações em fila e o repete assim que houver rede.
+const transactionsWriteQueue = new BackgroundSyncPlugin(
+  "transactions-write-queue",
+  { maxRetentionTime: 24 * 60 },
+);
+const API_ORIGIN = new URL(
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/",
+).origin;
+const transactionWriteStrategy = new NetworkOnly({
+  plugins: [transactionsWriteQueue],
+});
+
+registerRoute(
+  ({ request, url }) =>
+    request.method === "POST" &&
+    url.origin === API_ORIGIN &&
+    /^\/transactions\/?$/.test(url.pathname),
+  async ({ event, request }) => {
+    try {
+      return await transactionWriteStrategy.handle({ event, request });
+    } catch {
+      // O BackgroundSyncPlugin já colocou a requisição na fila. Responder 202
+      // evita que o Axios trate a operação enfileirada como uma falha.
+      return new Response(JSON.stringify({ queued: true }), {
+        status: 202,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  },
+  "POST",
+);
+
+cleanupOutdatedCaches();
+const navigateFallback = "/index.html";
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL(navigateFallback), {
+    denylist: [/^\/auth\//, /^\/api\//],
+  }),
+);
 
 const API_CACHE_NAME = "api-cache";
 const API_METADATA_CACHE_NAME = "api-cache-metadata";
@@ -50,7 +98,8 @@ self.addEventListener("activate", (event) => {
       await Promise.all(
         cacheNames
           .filter(
-            (name) => name.startsWith("static-cache-") && name !== STATIC_CACHE_NAME,
+            (name) =>
+              name.startsWith("static-cache-") && name !== STATIC_CACHE_NAME,
           )
           .map((name) => caches.delete(name)),
       );
@@ -80,7 +129,7 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
   // Workbox exclusively handles app navigation and precached build assets.
-  if (request.mode === 'navigate') return;
+  if (request.mode === "navigate") return;
 
   if (request.method === "GET" && isCacheableApiPath(url.pathname)) {
     event.respondWith(handleApiRequest(event, request, url));
@@ -135,7 +184,12 @@ function withoutSessionHeader(request) {
   return new Request(request, { headers });
 }
 
-async function getFreshApiResponse(cache, metadataCache, cacheKey) {
+async function getCachedApiResponse(
+  cache,
+  metadataCache,
+  cacheKey,
+  { allowStale = false } = {},
+) {
   const cached = await cache.match(cacheKey);
 
   if (!cached) {
@@ -146,7 +200,7 @@ async function getFreshApiResponse(cache, metadataCache, cacheKey) {
   const metadata = await metadataCache.match(cacheKey);
   const cachedAt = Number(await metadata?.text()) || 0;
 
-  if (!cachedAt || Date.now() - cachedAt > API_CACHE_TTL_MS) {
+  if (!cachedAt || (!allowStale && Date.now() - cachedAt > API_CACHE_TTL_MS)) {
     await Promise.all([cache.delete(cacheKey), metadataCache.delete(cacheKey)]);
     return null;
   }
@@ -169,7 +223,9 @@ async function pruneApiCache(cache, metadataCache) {
       return { key, cachedAt };
     }),
   );
-  const retained = entries.filter(Boolean).sort((first, second) => first.cachedAt - second.cachedAt);
+  const retained = entries
+    .filter(Boolean)
+    .sort((first, second) => first.cachedAt - second.cachedAt);
 
   while (retained.length > API_CACHE_MAX_ENTRIES) {
     const oldest = retained.shift();
@@ -186,8 +242,13 @@ async function purgeApiCache() {
 }
 
 async function notifySessionExpired(clientId) {
-  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-  clients.forEach((client) => client.postMessage({ type: 'API_CACHE_SESSION_EXPIRED' }));
+  const clients = await self.clients.matchAll({
+    type: "window",
+    includeUncontrolled: true,
+  });
+  clients.forEach((client) =>
+    client.postMessage({ type: "API_CACHE_SESSION_EXPIRED" }),
+  );
 }
 
 async function handleApiRequest(event, request, url) {
@@ -207,7 +268,8 @@ async function handleApiRequest(event, request, url) {
       return response;
     }
 
-    const cacheControl = response.headers.get("Cache-Control")?.toLowerCase() ?? "";
+    const cacheControl =
+      response.headers.get("Cache-Control")?.toLowerCase() ?? "";
     const vary = response.headers.get("Vary")?.trim();
 
     if (
@@ -243,7 +305,10 @@ async function handleApiRequest(event, request, url) {
       API_NETWORK_TIMEOUT_MS,
     );
   });
-  const networkOutcome = await Promise.race([networkOutcomePromise, timeoutPromise]);
+  const networkOutcome = await Promise.race([
+    networkOutcomePromise,
+    timeoutPromise,
+  ]);
   self.clearTimeout(timeoutId);
 
   if (networkOutcome.response) {
@@ -252,14 +317,22 @@ async function handleApiRequest(event, request, url) {
 
   const cache = await caches.open(API_CACHE_NAME);
   const metadataCache = await caches.open(API_METADATA_CACHE_NAME);
-  const cached = await getFreshApiResponse(cache, metadataCache, cacheKey);
+  // Em modo offline, a última resposta conhecida mantém as páginas utilizáveis
+  // mesmo que tenha ultrapassado o TTL de atualização normal.
+  const cached = await getCachedApiResponse(cache, metadataCache, cacheKey, {
+    allowStale: true,
+  });
 
   if (cached) {
     const headers = new Headers(cached.headers);
-    headers.set('X-Offline-Cache', 'true');
+    headers.set("X-Offline-Cache", "true");
     const metadata = await metadataCache.match(cacheKey);
-    headers.set('X-Offline-Cached-At', await metadata?.text() || '');
-    return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers });
+    headers.set("X-Offline-Cached-At", (await metadata?.text()) || "");
+    return new Response(cached.body, {
+      status: cached.status,
+      statusText: cached.statusText,
+      headers,
+    });
   }
 
   return new Response(JSON.stringify({ message: "API request timed out" }), {
@@ -291,10 +364,7 @@ function handleStaticRequest(event, request) {
     fetch(request).then(async (response) => {
       if (response.status === 200 || response.type === "opaque") {
         try {
-          await cache.put(
-            request,
-            response.clone(),
-          );
+          await cache.put(request, response.clone());
           const cacheKeys = await cache.keys();
 
           while (cacheKeys.length > STATIC_CACHE_MAX_ENTRIES) {
@@ -321,9 +391,10 @@ function handleStaticRequest(event, request) {
     try {
       return await networkPromise;
     } catch {
-      return new Response("Static resource unavailable offline", { status: 503 });
+      return new Response("Static resource unavailable offline", {
+        status: 503,
+      });
     }
   });
 }
 // End of runtime handlers; precache lifecycle is managed by Workbox.
-
