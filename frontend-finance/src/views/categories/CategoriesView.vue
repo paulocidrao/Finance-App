@@ -83,6 +83,7 @@ const TYPE_STYLES: Record<CategoryType, { icon: typeof TrendingUp; tone: string 
 const FOCUS_RING = '[&_:focus-visible]:ring-ring'
 
 const {
+  isOnline,
   search,
   typeFilter,
   page,
@@ -137,7 +138,7 @@ function clearSearchOnEscape(event: KeyboardEvent): void {
           </p>
         </div>
 
-        <Button type="button" class="w-fit" @click="openCreateCategory">
+        <Button type="button" class="w-fit" :disabled="!isOnline || isSubmitting || isDeleting" @click="openCreateCategory">
           <Plus aria-hidden="true" />
           Nova categoria
         </Button>
@@ -244,7 +245,7 @@ function clearSearchOnEscape(event: KeyboardEvent): void {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button type="button" @click="openCreateCategory">
+            <Button type="button" :disabled="!isOnline || isSubmitting || isDeleting" @click="openCreateCategory">
               <Plus aria-hidden="true" />
               Criar primeira categoria
             </Button>
@@ -304,6 +305,7 @@ function clearSearchOnEscape(event: KeyboardEvent): void {
                 size="icon"
                 class="size-9 text-muted-foreground"
                 type="button"
+                :disabled="!isOnline || isSubmitting || isDeleting"
                 @click="openEditCategory(category)"
               >
                 <SquarePen aria-hidden="true" />
@@ -315,6 +317,7 @@ function clearSearchOnEscape(event: KeyboardEvent): void {
                 size="icon"
                 class="size-9 text-muted-foreground hover:text-destructive focus-visible:text-destructive"
                 type="button"
+                :disabled="!isOnline || isSubmitting || isDeleting"
                 @click="requestDeleteCategory(category)"
               >
                 <Trash2 aria-hidden="true" />
@@ -396,7 +399,7 @@ function clearSearchOnEscape(event: KeyboardEvent): void {
           </DialogDescription>
         </DialogHeader>
 
-        <form class="flex flex-col gap-6" novalidate @submit.prevent="submitCategory">
+        <form class="flex flex-col gap-6" novalidate @submit.prevent="isOnline && submitCategory()">
           <FieldGroup class="gap-5">
             <Field :data-invalid="errors.name ? true : undefined" class="gap-2">
               <FieldLabel :for="CATEGORY_NAME_ID">Nome</FieldLabel>
@@ -406,6 +409,7 @@ function clearSearchOnEscape(event: KeyboardEvent): void {
                 autocomplete="off"
                 placeholder="Ex.: Educação"
                 required
+                :disabled="!isOnline || isSubmitting"
                 :aria-invalid="errors.name ? true : undefined"
                 :aria-describedby="`${CATEGORY_NAME_ID}-hint${errors.name ? ` ${CATEGORY_NAME_ID}-error` : ''}`"
                 class="dark:bg-background"
@@ -436,7 +440,7 @@ function clearSearchOnEscape(event: KeyboardEvent): void {
                 aria-labelledby="category-type-label"
                 aria-describedby="category-type-hint"
                 :model-value="form.type"
-                :disabled="isEditing"
+                :disabled="isEditing || !isOnline || isSubmitting"
                 class="w-full"
                 @update:model-value="setFormType"
               >
@@ -471,7 +475,7 @@ function clearSearchOnEscape(event: KeyboardEvent): void {
             <Button type="button" variant="outline" @click="isFormOpen = false">
               Cancelar
             </Button>
-            <Button type="submit" :disabled="isSubmitting" :aria-busy="isSubmitting">
+            <Button type="submit" :disabled="!isOnline || isSubmitting" :aria-busy="isSubmitting">
               <Loader2 v-if="isSubmitting" class="animate-spin" aria-hidden="true" />
               {{ isSubmitting ? 'Salvando…' : isEditing ? 'Salvar alterações' : 'Criar categoria' }}
             </Button>
@@ -517,9 +521,9 @@ function clearSearchOnEscape(event: KeyboardEvent): void {
             <Button
               type="button"
               class="bg-[#b91c1c] text-white hover:bg-[#991b1b] focus-visible:ring-destructive/40"
-              :disabled="isDeleting"
+              :disabled="!isOnline || isDeleting"
               :aria-busy="isDeleting"
-              @click="confirmDeleteCategory"
+              @click="isOnline && confirmDeleteCategory()"
             >
               <Loader2 v-if="isDeleting" class="animate-spin" aria-hidden="true" />
               {{ isDeleting ? 'Excluindo…' : 'Excluir' }}

@@ -3,14 +3,10 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { getAllowedOrigins } from './cors-origins';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const allowedOrigins = (
-    process.env.FRONTEND_URL || 'http://localhost:5173'
-  )
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  const allowedOrigins = getAllowedOrigins(process.env.FRONTEND_URL, process.env.NODE_ENV);
 
   app.enableCors({
     origin: allowedOrigins,

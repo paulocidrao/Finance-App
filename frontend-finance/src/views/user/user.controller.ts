@@ -1,11 +1,10 @@
-import { useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useQuery } from '@tanstack/vue-query'
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-import { clearOfflineApiCache } from '@/utils/offline-cache'
+import { endSession } from '@/utils/session'
+import { useNetworkStatus } from '@/utils/network-status'
 import {
   getProfile,
-  clearClientCookies,
   logout as logoutUser,
   USER_PROFILE_QUERY_KEY,
   type UserProfile,
@@ -29,8 +28,7 @@ function formatMemberSince(value: string): string {
 }
 
 export function useUserController() {
-  const router = useRouter()
-  const queryClient = useQueryClient()
+  const { isOnline } = useNetworkStatus()
   const profileQuery = useQuery({
     queryKey: USER_PROFILE_QUERY_KEY,
     queryFn: getProfile,
@@ -46,21 +44,18 @@ export function useUserController() {
   ])
 
   async function logout(): Promise<void> {
+    if (!isOnline.value) {
+      toast.error('Conecte-se para encerrar a sessão com segurança.')
+      return
+    }
     try {
       await logoutUser()
     } catch {
-      // O redirecionamento e a limpeza local devem ocorrer mesmo sem resposta da API.
-    } finally {
-      clearClientCookies()
-      await clearOfflineApiCache()
-      queryClient.clear()
-
-      toast.success('Sessão encerrada', {
-        description: 'Você saiu da sua conta.',
-      })
-
-      await router.replace({ name: 'login' })
+      toast.error('Não foi possível encerrar a sessão. Tente novamente quando estiver conectado.')
+      return
     }
+    await endSession()
+    toast.success('Sessão encerrada', { description: 'Você saiu da sua conta.' })
   }
 
   return {

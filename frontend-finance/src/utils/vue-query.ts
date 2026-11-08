@@ -3,9 +3,10 @@ import { QueryClient } from "@tanstack/vue-query";
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Permite que o service worker responda com o cache mesmo quando o
-      // navegador reporta que está offline.
+      // Let GET requests reach the service worker even without a network.
       networkMode: "always",
+      retry: (count, error: any) =>
+        navigator.onLine && error?.response?.status !== 401 && count < 2,
     },
   },
 });
