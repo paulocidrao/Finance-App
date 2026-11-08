@@ -61,7 +61,12 @@ const weatherQuery = useQuery({
         >
           <CloudSun class="size-4 shrink-0" aria-hidden="true" />
           <Spinner v-if="weatherQuery.isPending.value" class="size-3.5" />
-          <span v-else>{{ weatherQuery.data.value?.toFixed(1) }} °C</span>
+          <span v-else-if="weatherQuery.data.value">
+            {{ weatherQuery.data.value.temperature.toFixed(1) }} °C
+            <span v-if="weatherQuery.data.value.fromCache" class="text-xs">
+              (cache)
+            </span>
+          </span>
         </div>
       </header>
 
