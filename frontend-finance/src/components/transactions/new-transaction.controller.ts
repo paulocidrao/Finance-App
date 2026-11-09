@@ -8,7 +8,7 @@ import type {
   NewTransactionInput,
   TransactionType,
 } from '@/views/transactions/transactions.service'
-import { DEFAULT_TRANSACTION_DATE, formatLongDate, normalizeAmountInput, parseAmount } from './new-transaction.service'
+import { formatLongDate, getTodayDate, normalizeAmountInput, parseAmount } from './new-transaction.service'
 
 interface NewTransactionForm {
   type: TransactionType
@@ -33,7 +33,7 @@ export function useNewTransactionController() {
     amount: '',
     description: '',
     category: '',
-    date: DEFAULT_TRANSACTION_DATE,
+    date: getTodayDate(),
   })
   const error = ref('')
 
@@ -65,7 +65,7 @@ export function useNewTransactionController() {
     form.amount = ''
     form.description = ''
     form.category = categories.value[0]?.id ?? ''
-    form.date = DEFAULT_TRANSACTION_DATE
+    form.date = getTodayDate()
     error.value = ''
   }
 
