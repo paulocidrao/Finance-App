@@ -1,5 +1,93 @@
-# Vue 3 + TypeScript + Vite
+# Meu Bolso — Frontend
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Aplicação de finanças pessoais feita com Vue 3, TypeScript, Vite, Pinia e Vue Query. O frontend possui suporte a PWA e funcionamento offline para leitura dos dados já armazenados.
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## Pré-requisitos
+
+- Node.js 22 ou superior
+- pnpm 10 ou superior
+
+Para instalar as dependências localmente:
+
+```bash
+corepack enable
+pnpm install
+```
+
+## Variáveis de ambiente
+
+Copie o arquivo de exemplo:
+
+```bash
+cp .env.example .env
+```
+
+- `VITE_API_URL`: URL da API. Em desenvolvimento local, vazio usa `http://localhost:3000/`.
+- `VITE_CONNECTIVITY_URL`: endpoint opcional usado para verificar conectividade.
+
+## Executar localmente
+
+Inicie a API na porta `3000` e, em outro terminal, execute:
+
+```bash
+pnpm dev
+```
+
+Acesse [http://localhost:5173](http://localhost:5173).
+
+Para gerar e servir uma versão de produção:
+
+```bash
+pnpm build
+pnpm preview
+```
+
+## Executar com Docker
+
+O Docker Compose inicia o frontend em modo desenvolvimento, com hot reload:
+
+```bash
+docker compose up --build frontend
+```
+
+Acesse [http://localhost:5173](http://localhost:5173). A API continua sendo executada fora do container, normalmente em `http://localhost:3000`.
+
+Para criar e servir a imagem de produção com Nginx:
+
+```bash
+docker compose --profile production up --build frontend-production
+```
+
+Acesse [http://localhost:8080](http://localhost:8080). Se a API estiver em outra URL, informe-a durante o build:
+
+```bash
+VITE_API_URL=https://api.exemplo.com/ \
+  docker compose --profile production up --build frontend-production
+```
+
+## Testes e qualidade
+
+```bash
+pnpm test:unit
+pnpm test:offline
+pnpm test
+pnpm lint
+pnpm build
+```
+
+Os testes de PWA exigem Chromium e um servidor de preview já iniciado:
+
+```bash
+pnpm build
+pnpm preview --host 0.0.0.0
+pnpm test:pwa
+pnpm test:pwa:update
+```
+
+## Estrutura principal
+
+- `src/views`: telas de login, cadastro, início, transações, categorias e perfil.
+- `src/components`: componentes reutilizáveis e diálogos de transação.
+- `src/services` e `src/utils`: integração com API, sessão, conectividade e cache offline.
+- `src/sw.js`: service worker e estratégias de cache da PWA.
+- `scripts`: verificações automatizadas de PWA, sessão e funcionamento offline.

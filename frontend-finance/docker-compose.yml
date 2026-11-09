@@ -1,0 +1,28 @@
+services:
+  frontend:
+    build:
+      context: .
+      target: development
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-}
+      VITE_CONNECTIVITY_URL: ${VITE_CONNECTIVITY_URL:-}
+    volumes:
+      - .:/app
+      - frontend_node_modules:/app/node_modules
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend-production:
+    profiles: [production]
+    build:
+      context: .
+      target: production
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+    ports:
+      - "8080:80"
+
+volumes:
+  frontend_node_modules:
