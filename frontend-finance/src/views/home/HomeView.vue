@@ -109,17 +109,23 @@ const {
           </template>
           <template v-else>
             <Card
-              class="overflow-hidden rounded-2xl border-0 bg-primary px-5 py-5 text-primary-foreground shadow-sm sm:px-6 sm:py-6">
+              class="overflow-hidden rounded-2xl border-0 px-5 py-5 text-primary-foreground shadow-sm sm:px-6 sm:py-6"
+              :class="summary.balance < 0 ? 'bg-red-500' : 'bg-primary'">
               <CardHeader class="flex-row items-center justify-between p-0">
-                <CardDescription class="font-medium text-primary-foreground/80">Saldo do período</CardDescription>
+                <CardDescription class="font-medium"
+                  :class="summary.balance < 0 ? 'text-white' : 'text-primary-foreground/80'">Saldo do período
+                </CardDescription>
                 <span class="flex size-9 items-center justify-center rounded-xl bg-white/15">
-                  <Wallet class="size-4" />
+                  <Wallet class="size-4" :class="summary.balance < 0 ? 'text-white' : ''" />
                 </span>
               </CardHeader>
               <CardContent class="p-0 pt-5">
-                <p class="break-all text-[clamp(1.75rem,7vw,2.25rem)] font-bold leading-none tracking-tight">{{
-                  formatCurrency(summary.balance) }}</p>
-                <p class="mt-3 flex items-center gap-1.5 text-xs text-primary-foreground/75">
+                <p class="break-all text-[clamp(1.75rem,7vw,2.25rem)] font-bold leading-none tracking-tight"
+                  :class="summary.balance < 0 ? 'text-white' : 'text-primary-foreground/75'">{{
+                    formatCurrency(summary.balance) }}</p>
+                <p class="mt-3 flex items-center gap-1.5 text-xs "
+                  :class="summary.balance < 0 ? 'text-white' : 'text-primary-foreground/75'">
+
                   <Check class="size-3.5" /> Entradas menos despesas
                 </p>
               </CardContent>
@@ -148,7 +154,7 @@ const {
               </CardHeader>
               <CardContent class="p-0 pt-5">
                 <p class="break-all text-2xl font-bold leading-none tracking-tight">{{ formatCurrency(summary.expenses)
-                }}</p>
+                  }}</p>
                 <p class="mt-3 text-xs text-muted-foreground">Total gasto no período</p>
               </CardContent>
             </Card>
@@ -253,7 +259,7 @@ const {
                     <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ category.name }}</span>
                     <span class="text-sm font-semibold">{{ formatCurrency(category.amount) }}</span>
                     <span class="w-12 text-right text-xs text-muted-foreground">{{ formatPercentage(category.percentage)
-                    }}</span>
+                      }}</span>
                   </div>
                   <Progress :model-value="category.percentage" class="h-2 bg-muted"
                     :class="category.tone === 'muted' ? '[&_[data-slot=progress-indicator]]:bg-muted-foreground' : ''" />
