@@ -16,6 +16,7 @@ import {
 import { getTransactions } from "./transactions.service";
 
 export type TypeFilter = "all" | TransactionType;
+export type TransactionsViewState = "loading" | "error" | "empty" | "no-results" | "ready";
 
 /** Campo de busca da tela; recebe o foco depois de uma exclusão. */
 export const TRANSACTIONS_SEARCH_ID = "transactions-search";
@@ -219,6 +220,53 @@ export function useTransactionsController() {
   const categoryLabel = computed(() =>
     categoryFilter.value === "all" ? "Todas" : categoryFilter.value,
   );
+
+  const hasFilters = computed(
+    () =>
+      normalizedSearch.value !== "" ||
+      categoryFilter.value !== "all" ||
+      typeFilter.value !== "all",
+  );
+
+  const viewState = computed<TransactionsViewState>(() => {
+    if (transactionsQuery.isPending.value) return "loading";
+    if (transactionsQuery.isError.value) return "error";
+    if (filteredTransactions.value.length === 0) {
+      return hasFilters.value ? "no-results" : "empty";
+    }
+    return "ready";
+  });
+
+  // Recarregando em segundo plano (ex.: depois de criar ou excluir), com dados na tela.
+  const isRefreshing = computed(
+    () => transactionsQuery.isFetching.value && !transactionsQuery.isPending.value,
+  );
+
+  // Anunciado por leitores de tela (aria-live) quando a lista muda.
+  const statusMessage = computed(() => {
+    switch (viewState.value) {
+      case "loading":
+        return "Carregando transações…";
+      case "error":
+        return "Não foi possível carregar as transações.";
+      case "empty":
+        return `Nenhuma transação em ${periodLabel.value}.`;
+      case "no-results":
+        return "Nenhuma transação encontrada com esses filtros.";
+      default:
+        return isRefreshing.value ? "Atualizando transações…" : rangeLabel.value;
+    }
+  });
+
+  function retry(): void {
+    void transactionsQuery.refetch();
+  }
+
+  function clearFilters(): void {
+    search.value = "";
+    categoryFilter.value = "all";
+    typeFilter.value = "all";
+  }
 
   watch([search, categoryFilter, typeFilter], () => {
     page.value = 1;
@@ -446,6 +494,11 @@ export function useTransactionsController() {
     monthOptions,
     setMonth,
     categoryLabel,
+    viewState,
+    isRefreshing,
+    statusMessage,
+    retry,
+    clearFilters,
     filteredTransactions,
     paginatedTransactions,
     rangeLabel,

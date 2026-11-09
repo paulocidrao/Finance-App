@@ -37,16 +37,18 @@ export interface HomeSummaryResponse {
   transactionsCount: number;
 }
 
+// Resposta de GET /summary/by-category (backend: SummaryController.byCategory).
 interface ApiCategorySummary {
-  categoryName?: string;
-  name?: string;
-  amountCents?: number;
-  totalAmountCents?: number;
-  percentage?: number;
+  categoryId: string | null;
+  name: string;
+  totalCents: number;
+  percentage: number;
 }
 
 interface CategorySummaryResponse {
-  data: ApiCategorySummary[];
+  period: { from: string; to: string };
+  type: "INCOME" | "EXPENSE";
+  items: ApiCategorySummary[];
 }
 
 export const HOME_CATEGORY_SUMMARY_QUERY_KEY = [
@@ -187,19 +189,17 @@ export async function getSummary(month?: string): Promise<HomeSummary> {
 }
 
 export async function getCategoryExpenses(month?: string): Promise<HomeCategoryExpense[]> {
-  const response = await api.get<CategorySummaryResponse | ApiCategorySummary[]>(
+  const response = await api.get<CategorySummaryResponse>(
     "summary/by-category",
     { params: month ? getMonthRange(month) : undefined },
   );
-  const data = Array.isArray(response.data)
-    ? response.data
-    : response.data.data;
 
-  return data.map((category) => ({
-    name: category.categoryName ?? category.name ?? "Sem categoria",
-    amount:
-      (category.amountCents ?? category.totalAmountCents ?? 0) / 100,
-    percentage: category.percentage ?? 0,
+  return response.data.items.map((category) => ({
+    name: category.name,
+    amount: centsToAmount(category.totalCents),
+    percentage: category.percentage,
+    // Despesas sem categoria aparecem com a barra em cinza.
+    tone: category.categoryId ? "primary" : "muted",
   }));
 }
 

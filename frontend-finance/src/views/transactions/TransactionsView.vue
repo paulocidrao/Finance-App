@@ -7,9 +7,13 @@ import {
   Loader2,
   MoreHorizontal,
   Plus,
+  ReceiptText,
+  RotateCw,
   Search,
+  SearchX,
   SquarePen,
   Trash2,
+  TriangleAlert,
 } from '@lucide/vue'
 import {
   AlertDialog,
@@ -30,6 +34,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import {
   Pagination,
@@ -61,6 +73,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import NewTransactionDialog from '@/components/transactions/NewTransactionDialog.vue'
 import EditTransactionDialog from '@/components/transactions/EditTransactionDialog.vue'
@@ -79,6 +92,11 @@ const {
   selectedMonth,
   monthOptions,
   categoryLabel,
+  viewState,
+  isRefreshing,
+  statusMessage,
+  retry,
+  clearFilters,
   filteredTransactions,
   paginatedTransactions,
   rangeLabel,
@@ -187,8 +205,14 @@ const {
       </Select>
     </div>
 
+    <p class="sr-only" role="status" aria-live="polite">{{ statusMessage }}</p>
+
     <Card class="gap-0 overflow-hidden py-0">
-      <Table class="min-w-[900px]">
+      <Table
+        class="min-w-[900px]"
+        :aria-busy="viewState === 'loading' || isRefreshing"
+        aria-label="Transações do período"
+      >
         <TableHeader>
           <TableRow class="hover:bg-transparent">
             <TableHead class="w-[120px] pl-4 text-[13px] font-medium text-muted-foreground">
@@ -214,7 +238,85 @@ const {
           </TableRow>
         </TableHeader>
 
-        <TableBody>
+        <!-- Carregando -->
+        <TableBody v-if="viewState === 'loading'">
+          <TableRow
+            v-for="index in pageSize"
+            :key="index"
+            class="h-[50px] hover:bg-transparent"
+            aria-hidden="true"
+          >
+            <TableCell class="pl-4"><Skeleton class="h-4 w-20" /></TableCell>
+            <TableCell><Skeleton class="h-4 w-48 max-w-full" /></TableCell>
+            <TableCell><Skeleton class="h-5 w-24" /></TableCell>
+            <TableCell><Skeleton class="h-5 w-16" /></TableCell>
+            <TableCell><Skeleton class="ml-auto h-4 w-24" /></TableCell>
+            <TableCell class="pr-4"><Skeleton class="ml-auto size-9" /></TableCell>
+          </TableRow>
+        </TableBody>
+
+        <!-- Erro, mês sem transações ou filtros sem resultado -->
+        <TableBody v-else-if="viewState !== 'ready'">
+          <TableRow class="hover:bg-transparent">
+            <TableCell colspan="6" class="p-0">
+              <Empty v-if="viewState === 'error'" role="alert" class="py-12">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon" class="bg-destructive/10 text-destructive">
+                    <TriangleAlert aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>Não foi possível carregar as transações</EmptyTitle>
+                  <EmptyDescription class="whitespace-normal">
+                    Verifique sua conexão. Se o problema continuar, tente de novo em alguns minutos.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button type="button" variant="outline" :disabled="isRefreshing" @click="retry">
+                    <RotateCw :class="isRefreshing ? 'animate-spin' : ''" aria-hidden="true" />
+                    Tentar novamente
+                  </Button>
+                </EmptyContent>
+              </Empty>
+
+              <Empty v-else-if="viewState === 'empty'" class="py-12">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ReceiptText aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>Nenhuma transação em {{ periodLabel }}</EmptyTitle>
+                  <EmptyDescription class="whitespace-normal">
+                    Registre uma entrada ou despesa, ou escolha outro período.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button type="button" :disabled="!isOnline" @click="openNewTransaction">
+                    <Plus aria-hidden="true" />
+                    Nova transação
+                  </Button>
+                </EmptyContent>
+              </Empty>
+
+              <Empty v-else class="py-12">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <SearchX aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>Nenhuma transação encontrada</EmptyTitle>
+                  <EmptyDescription class="whitespace-normal">
+                    Nenhuma transação do período corresponde à busca ou aos filtros selecionados.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button type="button" variant="outline" @click="clearFilters">
+                    Limpar filtros
+                  </Button>
+                </EmptyContent>
+              </Empty>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+
+        <!-- Lista -->
+        <TableBody v-else :class="isRefreshing ? 'opacity-60 transition-opacity' : ''">
           <TableRow
             v-for="transaction in paginatedTransactions"
             :key="transaction.id"
@@ -280,16 +382,11 @@ const {
               </div>
             </TableCell>
           </TableRow>
-
-          <TableRow v-if="paginatedTransactions.length === 0" class="hover:bg-transparent">
-            <TableCell colspan="6" class="h-24 text-center text-sm text-muted-foreground">
-              Nenhuma transação encontrada.
-            </TableCell>
-          </TableRow>
         </TableBody>
       </Table>
 
       <div
+        v-if="viewState === 'ready'"
         class="flex flex-col gap-3 border-t px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between"
       >
         <p class="text-[13px] text-muted-foreground sm:flex-1">{{ rangeLabel }}</p>
