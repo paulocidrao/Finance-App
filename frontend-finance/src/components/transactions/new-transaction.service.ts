@@ -1,7 +1,14 @@
 import { categoriesService } from '@/views/categories/categories.service'
 import type { TransactionType } from '@/views/transactions/transactions.service'
 
-export const DEFAULT_TRANSACTION_DATE = '2026-10-27'
+/** Data de hoje (YYYY-MM-DD) no fuso local; toISOString() usaria UTC e poderia trocar o dia à noite. */
+export function getTodayDate(): string {
+  const today = new Date()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+
+  return `${today.getFullYear()}-${month}-${day}`
+}
 
 const MONTHS_LONG = [
   'janeiro',
