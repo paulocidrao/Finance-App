@@ -4,7 +4,8 @@ import { TransactionType } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators';
 import { SummaryQueryDto } from '../dtos';
 import { PrismaService } from '../prisma/prisma.service';
-function period(q: SummaryQueryDto) { const now = new Date(); const from = q.from ? new Date(q.from) : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)); const to = q.to ? new Date(q.to) : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)); if (from > to) throw new BadRequestException('from deve ser menor ou igual a to'); return { from, to }; }
+import { parseRangeEnd, parseRangeStart } from '../date-range';
+function period(q: SummaryQueryDto) { const now = new Date(); const from = q.from ? parseRangeStart(q.from) : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)); const to = q.to ? parseRangeEnd(q.to) : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)); if (from > to) throw new BadRequestException('from deve ser menor ou igual a to'); return { from, to }; }
 @ApiTags('Resumo') @ApiBearerAuth() @Controller('summary')
 export class SummaryController {
   constructor(private db: PrismaService) {}
