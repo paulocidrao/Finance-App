@@ -43,6 +43,8 @@ const {
   isSummaryLoading,
   isSummaryError,
   refetchSummary,
+  isCategoriesLoading,
+  isRetrying,
   isNewTransactionOpen,
   openNewTransaction,
   addTransaction,
@@ -92,8 +94,8 @@ const {
           <div class="min-w-0 flex-1">
             <h2 class="font-semibold">Não foi possível carregar seu resumo</h2>
             <p class="mt-1 text-sm text-muted-foreground">Confira sua conexão e tente novamente.</p>
-            <Button class="mt-4 rounded-xl" variant="outline" :disabled="isSummaryLoading" @click="refetchSummary">
-              <RefreshCw class="mr-2 size-4" :class="isSummaryLoading ? 'animate-spin' : ''" />
+            <Button class="mt-4 rounded-xl" variant="outline" :disabled="isRetrying" @click="refetchSummary">
+              <RefreshCw class="mr-2 size-4" :class="isRetrying ? 'animate-spin' : ''" />
               Tentar novamente
             </Button>
           </div>
@@ -234,7 +236,7 @@ const {
               <CardDescription class="mt-1 text-xs">Onde seu dinheiro foi no período</CardDescription>
             </CardHeader>
             <CardContent class="px-5 pb-5 sm:px-6">
-              <div v-if="isSummaryLoading" class="space-y-5">
+              <div v-if="isCategoriesLoading" class="space-y-5">
                 <div v-for="item in 4" :key="item" class="space-y-2">
                   <div class="h-4 w-full animate-pulse rounded bg-muted" />
                   <div class="h-2 animate-pulse rounded bg-muted" />

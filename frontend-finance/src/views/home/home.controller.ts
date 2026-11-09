@@ -153,8 +153,18 @@ export function useHomeController() {
     monthOptions,
     setMonth,
     isSummaryLoading: summaryQuery.isPending,
+    // O card de categorias depende de uma consulta separada.
+    isCategoriesLoading: computed(
+      () => summaryQuery.isPending.value || categorySummaryQuery.isPending.value,
+    ),
     summaryError: summaryQuery.error,
-    isSummaryError: summaryQuery.isError || categorySummaryQuery.isError,
+    // `refA || refB` sempre devolveria refA (todo ref é truthy); por isso o computed.
+    isSummaryError: computed(
+      () => summaryQuery.isError.value || categorySummaryQuery.isError.value,
+    ),
+    isRetrying: computed(
+      () => summaryQuery.isFetching.value || categorySummaryQuery.isFetching.value,
+    ),
     refetchSummary: () => Promise.all([summaryQuery.refetch(), categorySummaryQuery.refetch()]),
     isNewTransactionOpen,
     openNewTransaction,
