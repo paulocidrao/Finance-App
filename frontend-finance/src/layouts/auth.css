@@ -1,14 +1,14 @@
 .auth-shell {
-  --auth-sand: #e8dcc7;
-  --auth-sage: #8b9d83;
-  --auth-moss: #414b36;
-  --auth-clay: #b08b6e;
+  --auth-sand: #fafafa;
+  --auth-sage: #22c55e;
+  --auth-moss: #18181b;
+  --auth-clay: #16a34a;
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  background: var(--auth-sand);
-  color: #30372b;
+  background: #09090b;
+  color: #fafafa;
   font-family: 'Trebuchet MS', Arial, sans-serif;
 }
 
@@ -43,7 +43,7 @@
   place-items: center;
   border-radius: 0.9rem;
   background: var(--auth-sage);
-  color: #263022;
+  color: #052e16;
 }
 
 .brand-copy {
@@ -76,7 +76,7 @@
 .brand-description {
   max-width: 25rem;
   margin: 1.5rem 0 0;
-  color: #d4d9ca;
+  color: #a1a1aa;
   font-size: 1.05rem;
   line-height: 1.7;
 }
@@ -84,7 +84,7 @@
 .brand-footer {
   z-index: 1;
   margin: 0;
-  color: #c1cbb8;
+  color: #a1a1aa;
   font-size: 0.85rem;
 }
 
@@ -115,7 +115,7 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #65725a;
+  background: #27272a;
   color: var(--auth-sand);
 }
 
@@ -144,7 +144,7 @@
 
 .auth-privacy {
   margin: 1.5rem 0 0;
-  color: #6d7564;
+  color: #a1a1aa;
   font-size: 0.8rem;
   text-align: center;
 }
@@ -162,12 +162,12 @@
     max-width: 28rem;
     padding: 0.75rem 0 1.5rem;
   }
-  .mobile-brand { display: inline-flex; margin-bottom: 1.2rem; color: #414b36; font-size: 1rem; }
-  .mobile-brand .brand-icon { width: 2.15rem; height: 2.15rem; background: #8b9d83; }
-  .mobile-eyebrow { margin-bottom: 0.55rem; color: #606e55; font-size: 0.68rem; }
+  .mobile-brand { display: inline-flex; margin-bottom: 1.2rem; color: #fafafa; font-size: 1rem; }
+  .mobile-brand .brand-icon { width: 2.15rem; height: 2.15rem; background: #22c55e; }
+  .mobile-eyebrow { margin-bottom: 0.55rem; color: #22c55e; font-size: 0.68rem; }
   .mobile-intro h1 { font-size: clamp(2.55rem, 12vw, 3.3rem); line-height: 0.98; }
-  .mobile-intro h1 span { color: #68775c; }
-  .mobile-intro > p:last-child { margin: 0.8rem 0 0; color: #606657; font-size: 0.9rem; }
+  .mobile-intro h1 span { color: #22c55e; }
+  .mobile-intro > p:last-child { margin: 0.8rem 0 0; color: #a1a1aa; font-size: 0.9rem; }
   .auth-privacy { margin-top: 1rem; font-size: 0.75rem; }
 }
 

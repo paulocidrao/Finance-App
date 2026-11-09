@@ -1,9 +1,9 @@
 <template>
   <AuthLayout>
-    <Card class="login-card w-full max-w-md gap-0 rounded-[1.75rem] border-[#d3c8b4] bg-[#f4ecde] p-6 shadow-[0_18px_50px_-35px_rgba(48,55,43,0.45)] sm:p-8">
+    <Card class="login-card w-full max-w-md gap-0 rounded-[1.75rem] border-[#27272a] bg-[#18181b] p-6 shadow-[0_18px_50px_-35px_rgba(0,0,0,0.45)] sm:p-8">
       <CardHeader class="gap-2 px-0 pb-6">
-        <h2 id="login-title" class="font-serif text-3xl font-normal tracking-tight text-[#30372b]">Bem-vindo de volta</h2>
-        <CardDescription class="text-sm text-[#697060]">Entre para acompanhar suas finanças.</CardDescription>
+        <h2 id="login-title" class="font-serif text-3xl font-normal tracking-tight text-[#fafafa]">Bem-vindo de volta</h2>
+        <CardDescription class="text-sm text-[#a1a1aa]">Entre para acompanhar suas finanças.</CardDescription>
       </CardHeader>
 
       <CardContent class="px-0">
@@ -21,7 +21,7 @@
           <fieldset :disabled="isSubmitting" class="m-0 min-w-0 border-0 p-0">
             <FieldGroup class="gap-5">
               <Field :data-invalid="!!errors.email || undefined">
-                <FieldLabel :for="LOGIN_FIELD_IDS.email" class="text-[#394132]">E-mail</FieldLabel>
+                <FieldLabel :for="LOGIN_FIELD_IDS.email" class="text-[#fafafa]">E-mail</FieldLabel>
                 <Input
                   :id="LOGIN_FIELD_IDS.email"
                   v-model="form.email"
@@ -32,7 +32,7 @@
                   spellcheck="false"
                   placeholder="nome@exemplo.com"
                   required
-                  class="h-12 rounded-xl border-[#c9c4b4] bg-[#fbf7ef] px-4 text-base focus-visible:border-[#718167] focus-visible:ring-[#718167]/30"
+                  class="h-12 rounded-xl border-[#27272a] bg-[#09090b] px-4 text-base text-[#fafafa] focus-visible:border-[#22c55e] focus-visible:ring-[#22c55e]/30"
                   :aria-invalid="!!errors.email || undefined"
                   :aria-describedby="errors.email ? `${LOGIN_FIELD_IDS.email}-error` : undefined"
                   @blur="handleBlur('email')"
@@ -42,8 +42,8 @@
 
               <Field :data-invalid="!!errors.password || undefined">
                 <div class="flex items-center justify-between gap-2">
-                  <FieldLabel :for="LOGIN_FIELD_IDS.password" class="text-[#394132]">Senha</FieldLabel>
-                  <span class="text-xs text-[#777d70]">Use sua senha de acesso</span>
+                  <FieldLabel :for="LOGIN_FIELD_IDS.password" class="text-[#fafafa]">Senha</FieldLabel>
+                  <span class="text-xs text-[#a1a1aa]">Use sua senha de acesso</span>
                 </div>
                 <div class="relative">
                   <Input
@@ -52,7 +52,7 @@
                     :type="isPasswordVisible ? 'text' : 'password'"
                     autocomplete="current-password"
                     required
-                    class="h-12 rounded-xl border-[#c9c4b4] bg-[#fbf7ef] px-4 pr-12 text-base focus-visible:border-[#718167] focus-visible:ring-[#718167]/30"
+                    class="h-12 rounded-xl border-[#27272a] bg-[#09090b] px-4 pr-12 text-base text-[#fafafa] focus-visible:border-[#22c55e] focus-visible:ring-[#22c55e]/30"
                     :aria-invalid="!!errors.password || undefined"
                     :aria-describedby="errors.password ? `${LOGIN_FIELD_IDS.password}-error` : undefined"
                     @blur="handleBlur('password')"
@@ -61,7 +61,7 @@
                     type="button"
                     variant="ghost"
                     size="icon"
-                    class="absolute top-1 right-1 size-10 rounded-xl text-[#68745d] hover:bg-[#e8dcc7]"
+                    class="absolute top-1 right-1 size-10 rounded-xl text-[#a1a1aa] hover:bg-[#27272a]"
                     :aria-label="isPasswordVisible ? 'Ocultar senha' : 'Mostrar senha'"
                     :aria-pressed="isPasswordVisible"
                     :aria-controls="LOGIN_FIELD_IDS.password"
@@ -78,7 +78,7 @@
                 :id="LOGIN_SUBMIT_ID"
                 type="submit"
                 :disabled="!isOnline || isSubmitting"
-                class="mt-1 h-12 w-full rounded-xl bg-[#536348] text-base font-semibold text-[#f4ecde] shadow-sm hover:bg-[#414b36] focus-visible:ring-[#536348]/40"
+                class="mt-1 h-12 w-full rounded-xl bg-[#22c55e] text-base font-semibold text-[#052e16] shadow-sm hover:bg-[#16a34a] focus-visible:ring-[#22c55e]/40"
               >
                 <Spinner v-if="isSubmitting" aria-hidden="true" />
                 {{ isSubmitting ? 'Entrando…' : 'Entrar' }}
@@ -89,10 +89,10 @@
       </CardContent>
 
       <CardFooter class="justify-center gap-1.5 px-0 pt-6 text-sm">
-        <span class="text-[#697060]">Ainda não tem conta?</span>
+        <span class="text-[#a1a1aa]">Ainda não tem conta?</span>
         <RouterLink
           :to="{ name: 'signin' }"
-          class="rounded-sm font-semibold text-[#536348] underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-[#718167]/40"
+          class="rounded-sm font-semibold text-[#22c55e] underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-[#22c55e]/40"
         >
           Criar conta
         </RouterLink>
