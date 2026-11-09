@@ -2,20 +2,6 @@
 
 Aplicação de finanças pessoais feita com Vue 3, TypeScript, Vite, Pinia e Vue Query. O frontend possui suporte a PWA e funcionamento offline para leitura dos dados já armazenados.
 
-## Telas
-
-### Início
-
-![Tela inicial](docs/imgs/home.png)
-
-### Transações
-
-![Tela de transações](docs/imgs/transactions.png)
-
-### Categorias
-
-![Tela de categorias](docs/imgs/categories.png)
-
 ## Pré-requisitos
 
 - Node.js 22 ou superior

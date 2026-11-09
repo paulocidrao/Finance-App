@@ -2,6 +2,20 @@
 
 Aplicação full stack para controle de finanças pessoais. Permite criar uma conta, registrar receitas e despesas, organizar categorias e acompanhar o resumo financeiro do mês.
 
+## Telas da aplicação
+
+### Início
+
+![Tela inicial](frontend-finance/docs/imgs/home.png)
+
+### Transações
+
+![Tela de transações](frontend-finance/docs/imgs/transactions.png)
+
+### Categorias
+
+![Tela de categorias](frontend-finance/docs/imgs/categories.png)
+
 O projeto é dividido em dois aplicativos independentes:
 
 - `backend-financas/` — API REST em NestJS, Prisma e PostgreSQL.
