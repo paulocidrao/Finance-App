@@ -429,6 +429,8 @@ curl -b cookies.txt "http://localhost:3000/summary?from=2026-10-01&to=2026-10-31
 | `pnpm build` | Checagem de tipos + build de produção |
 | `pnpm preview` | Pré-visualiza o build de produção |
 | `pnpm lint` | Executa o oxlint |
+| `pnpm test` | Executa os testes com Vitest em modo watch |
+| `pnpm test:run` | Executa os testes uma vez (Vitest) |
 
 ## Documentação adicional
 
