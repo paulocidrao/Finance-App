@@ -6,7 +6,8 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const apiOrigin = new URL(env.VITE_API_BASE_URL ?? "http://localhost:3000/")
+  const apiProxyTarget = (env.VITE_API_BASE_URL || "http://localhost:3000/").replace(/\/+$/, "");
+  const apiOrigin = new URL(apiProxyTarget)
     .origin;
 
   const workboxConfig = {
@@ -51,11 +52,35 @@ export default defineConfig(({ mode }) => {
         workbox: workboxConfig,
         manifest: false,
         devOptions: {
-          enabled: false,
+          enabled: true,
           type: "classic",
         },
       }),
     ],
+    server: {
+      allowedHosts: true,
+      host: true,
+      port: 5173,
+      proxy: {
+        "/api": {
+          target: apiProxyTarget,
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/api/, ""),
+        },
+      },
+    },
+    preview: {
+      allowedHosts: true,
+      host: true,
+      port: 4173,
+      proxy: {
+        "/api": {
+          target: apiProxyTarget,
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/api/, ""),
+        },
+      },
+    },
     resolve: {
       alias: {
         "@": path.resolve(import.meta.dirname, "./src"),

@@ -22,7 +22,9 @@ Copie o arquivo de exemplo:
 cp .env.example .env
 ```
 
-- `VITE_API_URL`: URL da API. Em desenvolvimento local, vazio usa `http://localhost:3000/`.
+- `VITE_API_URL`: URL da API. O valor recomendado é `/api/`, que usa o proxy local e também funciona pelo domínio HTTPS do ngrok.
+- `VITE_API_BASE_URL`: origem da API local usada pelo proxy e pelo service worker, normalmente `http://localhost:3000/`.
+- `VITE_APP_URL`: opcional; deixe vazio para manter o domínio atual, inclusive quando acessado pelo ngrok.
 - `VITE_CONNECTIVITY_URL`: endpoint opcional usado para verificar conectividade.
 
 ## Executar localmente
