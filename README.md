@@ -16,6 +16,14 @@ Aplicação full stack para controle de finanças pessoais. Permite criar uma co
 
 ![Tela de categorias](frontend-finance/docs/imgs/categories.png)
 
+### Versão para celular
+
+![Tela inicial no celular](frontend-finance/docs/imgs/home-mobile.jpeg)
+
+![Tela de transações no celular](frontend-finance/docs/imgs/transaction-mobile.jpeg)
+
+![Tela de categorias no celular](frontend-finance/docs/imgs/categorias-mobile.jpeg)
+
 O projeto é dividido em dois aplicativos independentes:
 
 - `backend-financas/` — API REST em NestJS, Prisma e PostgreSQL.
@@ -47,6 +55,60 @@ pnpm dev
 ```
 
 Depois acesse `http://localhost:5173` e entre com `demo@financas.local` / `senha1234`. O passo a passo detalhado está em [Como rodar o projeto](#como-rodar-o-projeto).
+
+## Executar com ngrok e instalar a PWA no celular
+
+Para instalar a PWA no celular, o frontend precisa ser acessado por uma URL HTTPS pública. O `localhost` do computador não pode ser aberto diretamente pelo celular.
+
+### Configuração do frontend
+
+No arquivo `frontend-finance/.env`, use:
+
+```env
+VITE_API_URL=/api/
+VITE_API_BASE_URL=http://localhost:3000/
+VITE_APP_URL=
+```
+
+O frontend chama a API por `/api/`. O proxy do Vite encaminha essas requisições para `localhost:3000`, então não é necessário criar um segundo túnel ngrok para a API.
+
+### 1. Iniciar o banco e a API
+
+```bash
+cd backend-financas
+docker compose up -d
+pnpm start:dev
+```
+
+A API ficará disponível em `http://localhost:3000`.
+
+### 2. Iniciar o frontend
+
+Em outro terminal:
+
+```bash
+cd frontend-finance
+pnpm dev
+```
+
+O service worker da PWA está habilitado no modo de desenvolvimento e o Vite aceita o domínio do ngrok.
+
+### 3. Criar o túnel HTTPS
+
+Em um terceiro terminal:
+
+```bash
+ngrok http 5173
+```
+
+Copie a URL `https://...ngrok...` exibida pelo ngrok e abra-a no celular.
+
+### 4. Instalar no celular
+
+- **Android/Chrome:** toque em **Instalar** no aviso do Meu Bolso ou abra o menu do navegador e escolha **Instalar aplicativo**.
+- **iPhone/iPad:** no Safari, toque em **Compartilhar → Adicionar à Tela de Início**.
+
+Se a opção não aparecer, reinicie o `pnpm dev`, abra novamente a URL HTTPS do ngrok e limpe os dados antigos do site/service worker. Não use `http://localhost:5173` no celular.
 
 ## Arquitetura
 
